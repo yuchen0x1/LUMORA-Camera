@@ -1,0 +1,597 @@
+{
+  "api29": {
+    "api": 29,
+    "cameras": 1,
+    "elapsedSeconds": 37.558,
+    "tests": [
+      {
+        "class": "com.lumora.camera.CameraSafeAreaTest",
+        "method": "systemBarsUseTheCentralDarkSurfacePolicy",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraSafeAreaTest",
+        "method": "cameraControlsRemainInsideSystemSafeArea",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraSafeAreaTest",
+        "method": "proControlsDoNotPushTheShutterIntoTheLandscapeGestureArea",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraSafeAreaTest",
+        "method": "cameraControlsRemainSafeAfterLandscapeRotation",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraSafeAreaTest",
+        "method": "launcherActivityAllowsLandscapeOrientation",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraShootingControlsTest",
+        "method": "manualIsoAndShutterComparedWithSourceExif",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraShootingControlsTest",
+        "method": "volumeKeyTriggersOneTimedThreeShotBurst",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraWorkflowTest",
+        "method": "cameraModesLensSwitchAndResumeProduceCapturablePreview",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraWorkflowTest",
+        "method": "shutterToGalleryComparisonAndEditorRetainsOriginal",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraWorkflowTest",
+        "method": "settingsShowActiveLensAndKeepPreferenceWhenReopened",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.PhotoRepositoryMigrationTest",
+        "method": "completedCaptureReplacesOnlyItsSourcePlaceholder",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.PhotoRepositoryMigrationTest",
+        "method": "undoBeforeCaptureFinishesLetsCompletionUpdateTheRestoredRow",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.PhotoRepositoryMigrationTest",
+        "method": "removedCaptureStaysHiddenOnCompletionAndUndoRestoresFinishedVersion",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.PhotoRepositoryMigrationTest",
+        "method": "legacyRecordAndSingleFileLegacyRecordRemainReadableAfterEdit",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.PhotoRepositoryMigrationTest",
+        "method": "independentCaptureAndEditorRepositoriesKeepBothSetsOfUpdates",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.PresetAssetTest",
+        "method": "installedAssetProfilesAreFiniteDistinctAndUsable",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.camera.DeviceCapabilityManagerTest",
+        "method": "exposedLensRangesAndIdsMatchTheDevice",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.FilmColorEngineTest",
+        "method": "automaticCorrectionPreservesMiddleGrayAndScalesOnDarkFrames",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.FilmColorEngineTest",
+        "method": "nearNeutralColorCastIsReducedWithoutIntroducingANewDominantColor",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.FilmColorEngineTest",
+        "method": "everyStyleHasADistinctDeterministicAppearanceAndSourceIsUnchanged",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.FilmColorEngineTest",
+        "method": "eachEditingControlChangesItsOwnRender",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.FilmColorEngineTest",
+        "method": "automaticDenoiseReducesDarkRippleAndPreservesTheBrightEdge",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.FilmColorEngineTest",
+        "method": "automaticDetailRespondsToLocalStructureOnCleanMidtones",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.PhotoEnhancementEngineTest",
+        "method": "jpegQualityChangesEncodedBytesAcrossTwoSeparateVersions",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.PhotoEnhancementEngineTest",
+        "method": "failedWriteRemovesOnlyTheNewPendingItem",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.PhotoEnhancementEngineTest",
+        "method": "fullSizeAndExifSurviveASeparateMeasuredExportAndOrientedPreview",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.PhotoEnhancementEngineTest",
+        "method": "validOversizedPngFailsBeforeFullSizeAllocationAndOriginalStillOpens",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.ui.PreviewGeometryTest",
+        "method": "quarterTurnCropAndMirrorMapDistinctSceneLandmarksExactlyOnce",
+        "status": 0
+      }
+    ],
+    "manualExif": [
+      "lens=0 requestedISO=320 requestedExposureNs=11999997 exifISO=320 exifExposureNs=11999997 outcome=within_tolerance"
+    ],
+    "captures": [
+      "640x480 bytes=14289 mime=image/jpeg camera=0 lens=BACK mode=PRO iso=320 exposureNs=11999997 focalMm=5.0 focusM=unavailable processingMs=270 output=640x480 outputBytes=10016 outputMime=image/jpeg jpegQuality=95",
+      "640x480 bytes=17664 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=10000000 focalMm=5.0 focusM=unavailable processingMs=96 output=640x480 outputBytes=11700 outputMime=image/jpeg jpegQuality=95",
+      "640x480 bytes=19191 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=10000000 focalMm=5.0 focusM=unavailable processingMs=78 output=640x480 outputBytes=13151 outputMime=image/jpeg jpegQuality=95",
+      "640x480 bytes=17664 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=10000000 focalMm=5.0 focusM=unavailable processingMs=123 output=640x480 outputBytes=11700 outputMime=image/jpeg jpegQuality=95",
+      "640x480 bytes=18664 mime=image/jpeg camera=0 lens=BACK mode=STREET_PROFILE iso=100 exposureNs=3688857 focalMm=5.0 focusM=unavailable processingMs=221 output=640x480 outputBytes=13293 outputMime=image/jpeg jpegQuality=95",
+      "640x480 bytes=17664 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=3688857 focalMm=5.0 focusM=unavailable processingMs=227 output=640x480 outputBytes=11700 outputMime=image/jpeg jpegQuality=95",
+      "640x480 bytes=17664 mime=image/jpeg camera=unavailable lens=unavailable mode=EDIT iso=100 exposureNs=3688857 focalMm=5.0 focusM=unavailable processingMs=349 output=640x480 outputBytes=11152 outputMime=image/jpeg jpegQuality=95",
+      "180x120 bytes=1663 mime=image/png camera=unavailable lens=unavailable mode=AUTO iso=unavailable exposureNs=unavailable focalMm=unavailable focusM=unavailable processingMs=55 output=180x120 outputBytes=12744 outputMime=image/jpeg jpegQuality=72",
+      "180x120 bytes=1663 mime=image/png camera=unavailable lens=unavailable mode=AUTO iso=unavailable exposureNs=unavailable focalMm=unavailable focusM=unavailable processingMs=122 output=180x120 outputBytes=28682 outputMime=image/jpeg jpegQuality=98",
+      "3024x909 bytes=17213 mime=image/jpeg camera=unavailable lens=unavailable mode=AUTO iso=400 exposureNs=8000000 focalMm=4.2 focusM=2.0 processingMs=507 output=3024x909 outputBytes=60636 outputMime=image/jpeg jpegQuality=88"
+    ],
+    "memory": [
+      "640x480 heapMax=16777216 managedAvailable=7410800 nativeBudget=293783552 accepted=true",
+      "640x480 heapMax=16777216 managedAvailable=6125976 nativeBudget=293783552 accepted=true",
+      "640x480 heapMax=16777216 managedAvailable=4670040 nativeBudget=293783552 accepted=true",
+      "640x480 heapMax=16777216 managedAvailable=3296008 nativeBudget=293783552 accepted=true",
+      "640x480 heapMax=16777216 managedAvailable=5651896 nativeBudget=293783552 accepted=true",
+      "640x480 heapMax=16777216 managedAvailable=3758392 nativeBudget=293783552 accepted=true",
+      "640x480 heapMax=16777216 managedAvailable=7716408 nativeBudget=293783552 accepted=true",
+      "180x120 heapMax=16777216 managedAvailable=4425080 nativeBudget=293783552 accepted=true",
+      "180x120 heapMax=16777216 managedAvailable=4097400 nativeBudget=293783552 accepted=true",
+      "3024x909 heapMax=16777216 managedAvailable=3372312 nativeBudget=293783552 accepted=true",
+      "32768x32768 heapMax=16777216 managedAvailable=6227008 nativeBudget=293783552 accepted=false"
+    ]
+  },
+  "api35": {
+    "api": 35,
+    "cameras": 2,
+    "elapsedSeconds": 72.306,
+    "tests": [
+      {
+        "class": "com.lumora.camera.CameraSafeAreaTest",
+        "method": "systemBarsUseTheCentralDarkSurfacePolicy",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraSafeAreaTest",
+        "method": "cameraControlsRemainInsideSystemSafeArea",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraSafeAreaTest",
+        "method": "proControlsDoNotPushTheShutterIntoTheLandscapeGestureArea",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraSafeAreaTest",
+        "method": "cameraControlsRemainSafeAfterLandscapeRotation",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraSafeAreaTest",
+        "method": "launcherActivityAllowsLandscapeOrientation",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraShootingControlsTest",
+        "method": "manualIsoAndShutterComparedWithSourceExif",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraShootingControlsTest",
+        "method": "volumeKeyTriggersOneTimedThreeShotBurst",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraWorkflowTest",
+        "method": "cameraModesLensSwitchAndResumeProduceCapturablePreview",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraWorkflowTest",
+        "method": "shutterToGalleryComparisonAndEditorRetainsOriginal",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.CameraWorkflowTest",
+        "method": "settingsShowActiveLensAndKeepPreferenceWhenReopened",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.PhotoRepositoryMigrationTest",
+        "method": "completedCaptureReplacesOnlyItsSourcePlaceholder",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.PhotoRepositoryMigrationTest",
+        "method": "undoBeforeCaptureFinishesLetsCompletionUpdateTheRestoredRow",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.PhotoRepositoryMigrationTest",
+        "method": "removedCaptureStaysHiddenOnCompletionAndUndoRestoresFinishedVersion",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.PhotoRepositoryMigrationTest",
+        "method": "legacyRecordAndSingleFileLegacyRecordRemainReadableAfterEdit",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.PhotoRepositoryMigrationTest",
+        "method": "independentCaptureAndEditorRepositoriesKeepBothSetsOfUpdates",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.PresetAssetTest",
+        "method": "installedAssetProfilesAreFiniteDistinctAndUsable",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.camera.DeviceCapabilityManagerTest",
+        "method": "exposedLensRangesAndIdsMatchTheDevice",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.FilmColorEngineTest",
+        "method": "automaticCorrectionPreservesMiddleGrayAndScalesOnDarkFrames",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.FilmColorEngineTest",
+        "method": "nearNeutralColorCastIsReducedWithoutIntroducingANewDominantColor",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.FilmColorEngineTest",
+        "method": "everyStyleHasADistinctDeterministicAppearanceAndSourceIsUnchanged",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.FilmColorEngineTest",
+        "method": "eachEditingControlChangesItsOwnRender",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.FilmColorEngineTest",
+        "method": "automaticDenoiseReducesDarkRippleAndPreservesTheBrightEdge",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.FilmColorEngineTest",
+        "method": "automaticDetailRespondsToLocalStructureOnCleanMidtones",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.PhotoEnhancementEngineTest",
+        "method": "jpegQualityChangesEncodedBytesAcrossTwoSeparateVersions",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.PhotoEnhancementEngineTest",
+        "method": "failedWriteRemovesOnlyTheNewPendingItem",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.PhotoEnhancementEngineTest",
+        "method": "fullSizeAndExifSurviveASeparateMeasuredExportAndOrientedPreview",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.image.PhotoEnhancementEngineTest",
+        "method": "validOversizedPngFailsBeforeFullSizeAllocationAndOriginalStillOpens",
+        "status": 0
+      },
+      {
+        "class": "com.lumora.camera.ui.PreviewGeometryTest",
+        "method": "quarterTurnCropAndMirrorMapDistinctSceneLandmarksExactlyOnce",
+        "status": 0
+      }
+    ],
+    "manualExif": [
+      "lens=0 requestedISO=320 requestedExposureNs=11999997 exifISO=320 exifExposureNs=12000000 outcome=within_tolerance"
+    ],
+    "captures": [
+      "1856x1392 bytes=49395 mime=image/jpeg camera=0 lens=BACK mode=PRO iso=320 exposureNs=12000000 focalMm=3.3 focusM=0.05 processingMs=2733 output=1856x1392 outputBytes=201054 outputMime=image/jpeg jpegQuality=95",
+      "1856x1392 bytes=59560 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1069 output=1856x1392 outputBytes=214741 outputMime=image/jpeg jpegQuality=95",
+      "1856x1392 bytes=59125 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=953 output=1856x1392 outputBytes=215891 outputMime=image/jpeg jpegQuality=95",
+      "1856x1392 bytes=60938 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=909 output=1856x1392 outputBytes=216273 outputMime=image/jpeg jpegQuality=95",
+      "1856x1392 bytes=59973 mime=image/jpeg camera=0 lens=BACK mode=STREET_PROFILE iso=100 exposureNs=4500000 focalMm=3.3 focusM=0.05 processingMs=1091 output=1856x1392 outputBytes=215830 outputMime=image/jpeg jpegQuality=95",
+      "1856x1392 bytes=61343 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1167 output=1856x1392 outputBytes=218939 outputMime=image/jpeg jpegQuality=95",
+      "1856x1392 bytes=61343 mime=image/jpeg camera=unavailable lens=unavailable mode=EDIT iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1082 output=1856x1392 outputBytes=157422 outputMime=image/jpeg jpegQuality=95",
+      "180x120 bytes=1663 mime=image/png camera=unavailable lens=unavailable mode=AUTO iso=unavailable exposureNs=unavailable focalMm=unavailable focusM=unavailable processingMs=47 output=180x120 outputBytes=12664 outputMime=image/jpeg jpegQuality=72",
+      "180x120 bytes=1663 mime=image/png camera=unavailable lens=unavailable mode=AUTO iso=unavailable exposureNs=unavailable focalMm=unavailable focusM=unavailable processingMs=53 output=180x120 outputBytes=28602 outputMime=image/jpeg jpegQuality=98",
+      "3024x909 bytes=17133 mime=image/jpeg camera=unavailable lens=unavailable mode=AUTO iso=400 exposureNs=8000000 focalMm=4.2 focusM=2.0 processingMs=697 output=3024x909 outputBytes=60556 outputMime=image/jpeg jpegQuality=88"
+    ],
+    "memory": [
+      "1856x1392 heapMax=201326592 managedAvailable=184209648 nativeBudget=390212608 accepted=true",
+      "1856x1392 heapMax=201326592 managedAvailable=188543376 nativeBudget=390212608 accepted=true",
+      "1856x1392 heapMax=201326592 managedAvailable=192587520 nativeBudget=390212608 accepted=true",
+      "1856x1392 heapMax=201326592 managedAvailable=190686528 nativeBudget=390212608 accepted=true",
+      "1856x1392 heapMax=201326592 managedAvailable=187215264 nativeBudget=390212608 accepted=true",
+      "1856x1392 heapMax=201326592 managedAvailable=192280256 nativeBudget=390212608 accepted=true",
+      "1856x1392 heapMax=201326592 managedAvailable=190940960 nativeBudget=390212608 accepted=true",
+      "180x120 heapMax=201326592 managedAvailable=186217744 nativeBudget=390212608 accepted=true",
+      "180x120 heapMax=201326592 managedAvailable=185898256 nativeBudget=390212608 accepted=true",
+      "3024x909 heapMax=201326592 managedAvailable=192689136 nativeBudget=390212608 accepted=true",
+      "32768x32768 heapMax=201326592 managedAvailable=188630000 nativeBudget=390212608 accepted=false"
+    ]
+  },
+  "rotationApi29": [
+    [
+      1,
+      [
+        "LUMORA_20261118_112150_652_80a4c415_ORIGINAL.jpg",
+        [
+          640,
+          480
+        ],
+        1
+      ]
+    ],
+    [
+      3,
+      [
+        "LUMORA_20261118_112155_958_4c51d7b7_ORIGINAL.jpg",
+        [
+          640,
+          480
+        ],
+        3
+      ]
+    ]
+  ],
+  "jvm": [
+    {
+      "suite": "com.lumora.camera.camera.CaptureModeTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "com.lumora.camera.camera.CaptureQualityRecordTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "com.lumora.camera.camera.DeviceCapabilitiesTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "com.lumora.camera.image.PhotoEditParametersTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "com.lumora.camera.image.PresetColorMapTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "com.lumora.camera.PresetContractTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "suite": "com.lumora.camera.ui.PreviewAnalysisTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0
+    }
+  ],
+  "enduranceApi35": {
+    "log": [
+      "previewMs=60845 shutter=BACK · 0 · AUTO",
+      "completed=0 pssKb=118081 largestSampledPssKb=118081 javaUsedKb=9270 thermalStatus=0 elapsedMs=73",
+      "completed=10 pssKb=119983 largestSampledPssKb=119983 javaUsedKb=6837 thermalStatus=0 elapsedMs=32333",
+      "completed=20 pssKb=121660 largestSampledPssKb=121660 javaUsedKb=8085 thermalStatus=0 elapsedMs=64919",
+      "completed=30 pssKb=125640 largestSampledPssKb=125640 javaUsedKb=11894 thermalStatus=0 elapsedMs=96552",
+      "completed=40 pssKb=131360 largestSampledPssKb=131360 javaUsedKb=17230 thermalStatus=0 elapsedMs=125487",
+      "completed=50 pssKb=123096 largestSampledPssKb=131360 javaUsedKb=8909 thermalStatus=0 elapsedMs=152801",
+      "completed=60 pssKb=122887 largestSampledPssKb=131360 javaUsedKb=8625 thermalStatus=0 elapsedMs=181865",
+      "completed=70 pssKb=124203 largestSampledPssKb=131360 javaUsedKb=9909 thermalStatus=0 elapsedMs=212232",
+      "completed=80 pssKb=126547 largestSampledPssKb=131360 javaUsedKb=12341 thermalStatus=0 elapsedMs=244599",
+      "completed=90 pssKb=128243 largestSampledPssKb=131360 javaUsedKb=13813 thermalStatus=0 elapsedMs=276152",
+      "completed=100 pssKb=122799 largestSampledPssKb=131360 javaUsedKb=8333 thermalStatus=0 elapsedMs=304402",
+      "PASS completed=100 retainedJpegs=200 medianMs=2969 p95Ms=3590 maxMs=3866 largestSampledPssKb=131360 elapsedMs=308376"
+    ],
+    "captures": [
+      "capture input=1856x1392 bytes=60512 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1514 output=1856x1392 outputBytes=215864 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61397 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1331 output=1856x1392 outputBytes=218605 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59125 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1332 output=1856x1392 outputBytes=215891 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61115 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1308 output=1856x1392 outputBytes=217320 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60101 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1161 output=1856x1392 outputBytes=217493 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60938 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1072 output=1856x1392 outputBytes=216273 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61118 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1104 output=1856x1392 outputBytes=218430 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60101 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1630 output=1856x1392 outputBytes=217493 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59442 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1153 output=1856x1392 outputBytes=215268 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59015 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1237 output=1856x1392 outputBytes=215598 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60938 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1276 output=1856x1392 outputBytes=216273 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60938 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1376 output=1856x1392 outputBytes=216273 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59015 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1276 output=1856x1392 outputBytes=215598 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61287 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1221 output=1856x1392 outputBytes=218693 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60101 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1464 output=1856x1392 outputBytes=217493 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61287 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1220 output=1856x1392 outputBytes=218693 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59125 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1117 output=1856x1392 outputBytes=215891 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59125 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1350 output=1856x1392 outputBytes=215891 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59125 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1282 output=1856x1392 outputBytes=215891 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60512 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1339 output=1856x1392 outputBytes=215864 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61397 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1305 output=1856x1392 outputBytes=218605 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61287 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1230 output=1856x1392 outputBytes=218693 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61287 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1301 output=1856x1392 outputBytes=218693 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60101 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1544 output=1856x1392 outputBytes=217493 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61287 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1306 output=1856x1392 outputBytes=218693 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60488 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1185 output=1856x1392 outputBytes=215483 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60101 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1153 output=1856x1392 outputBytes=217493 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60101 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1080 output=1856x1392 outputBytes=217493 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60938 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1259 output=1856x1392 outputBytes=216273 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60101 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1036 output=1856x1392 outputBytes=217493 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59833 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1127 output=1856x1392 outputBytes=216197 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59125 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1086 output=1856x1392 outputBytes=215891 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60512 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1065 output=1856x1392 outputBytes=215864 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59125 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1059 output=1856x1392 outputBytes=215891 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59442 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1258 output=1856x1392 outputBytes=215268 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59015 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1186 output=1856x1392 outputBytes=215598 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59442 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1130 output=1856x1392 outputBytes=215268 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59442 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=963 output=1856x1392 outputBytes=215268 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60101 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1022 output=1856x1392 outputBytes=217493 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60101 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1032 output=1856x1392 outputBytes=217493 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61397 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=969 output=1856x1392 outputBytes=218605 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59442 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1193 output=1856x1392 outputBytes=215268 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60101 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1130 output=1856x1392 outputBytes=217493 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61115 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1040 output=1856x1392 outputBytes=217320 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59833 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1097 output=1856x1392 outputBytes=216197 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60938 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1046 output=1856x1392 outputBytes=216273 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59015 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1022 output=1856x1392 outputBytes=215598 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60488 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1040 output=1856x1392 outputBytes=215483 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61115 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1008 output=1856x1392 outputBytes=217320 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61397 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=989 output=1856x1392 outputBytes=218605 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60101 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1070 output=1856x1392 outputBytes=217493 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61287 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1201 output=1856x1392 outputBytes=218693 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61287 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1256 output=1856x1392 outputBytes=218693 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59125 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1064 output=1856x1392 outputBytes=215891 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61287 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1247 output=1856x1392 outputBytes=218693 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59833 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1012 output=1856x1392 outputBytes=216197 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60488 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1319 output=1856x1392 outputBytes=215483 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61397 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1182 output=1856x1392 outputBytes=218605 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60488 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1229 output=1856x1392 outputBytes=215483 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60938 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1136 output=1856x1392 outputBytes=216273 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60488 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1077 output=1856x1392 outputBytes=215483 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60512 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1170 output=1856x1392 outputBytes=215864 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61287 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1159 output=1856x1392 outputBytes=218693 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59125 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1132 output=1856x1392 outputBytes=215891 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60098 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1207 output=1856x1392 outputBytes=217009 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59015 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1144 output=1856x1392 outputBytes=215598 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61287 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1483 output=1856x1392 outputBytes=218693 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60101 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1199 output=1856x1392 outputBytes=217493 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60488 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1205 output=1856x1392 outputBytes=215483 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59015 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1234 output=1856x1392 outputBytes=215598 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59833 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1011 output=1856x1392 outputBytes=216197 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60488 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1102 output=1856x1392 outputBytes=215483 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59125 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1054 output=1856x1392 outputBytes=215891 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61287 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1619 output=1856x1392 outputBytes=218693 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60098 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1362 output=1856x1392 outputBytes=217009 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61115 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1228 output=1856x1392 outputBytes=217320 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60938 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1350 output=1856x1392 outputBytes=216273 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60488 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1619 output=1856x1392 outputBytes=215483 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61287 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1763 output=1856x1392 outputBytes=218693 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61397 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1303 output=1856x1392 outputBytes=218605 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60938 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1091 output=1856x1392 outputBytes=216273 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60512 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1203 output=1856x1392 outputBytes=215864 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59833 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1009 output=1856x1392 outputBytes=216197 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61287 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1785 output=1856x1392 outputBytes=218693 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60101 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1123 output=1856x1392 outputBytes=217493 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61287 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1076 output=1856x1392 outputBytes=218693 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61115 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1124 output=1856x1392 outputBytes=217320 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60512 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1342 output=1856x1392 outputBytes=215864 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59015 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1372 output=1856x1392 outputBytes=215598 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59833 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1388 output=1856x1392 outputBytes=216197 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59833 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1076 output=1856x1392 outputBytes=216197 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60488 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1248 output=1856x1392 outputBytes=215483 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60204 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1006 output=1856x1392 outputBytes=217059 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60098 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1036 output=1856x1392 outputBytes=217009 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=61287 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1027 output=1856x1392 outputBytes=218693 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59833 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1034 output=1856x1392 outputBytes=216197 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60512 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1006 output=1856x1392 outputBytes=215864 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=59833 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1016 output=1856x1392 outputBytes=216197 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60101 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1060 output=1856x1392 outputBytes=217493 outputMime=image/jpeg jpegQuality=95",
+      "capture input=1856x1392 bytes=60488 mime=image/jpeg camera=0 lens=BACK mode=AUTO iso=100 exposureNs=4200000 focalMm=3.3 focusM=0.05 processingMs=1032 output=1856x1392 outputBytes=215483 outputMime=image/jpeg jpegQuality=95"
+    ]
+  },
+  "artifacts": {
+    "debug": {
+      "path": "app/build/outputs/apk/debug/app-debug.apk",
+      "bytes": 69912144,
+      "sha256": "99a28fbfbc8a41c89c0836c1cb0893db7d6bd4bdd125c11107b26ec90d51be18"
+    },
+    "unsignedRelease": {
+      "path": "app/build/outputs/apk/release/app-release-unsigned.apk",
+      "bytes": 49586011,
+      "sha256": "3850c71db7af24bc1146f3cf02318fd1ca24ba8e0a780521f61ecf5edb667d00"
+    }
+  },
+  "layoutApi35": [
+    {
+      "resolution": "720x1280",
+      "densityDpi": 320,
+      "cutout": "tall",
+      "navigation": "threebutton",
+      "enabledOverlays": "['[x] com.android.internal.display.cutout.emulation.tall', '[x] com.android.internal.systemui.navbar.threebutton']",
+      "elapsedSeconds": 15.756,
+      "passed": 5
+    },
+    {
+      "resolution": "1080x2400",
+      "densityDpi": 420,
+      "cutout": "hole",
+      "navigation": "gestural",
+      "enabledOverlays": "['[x] com.android.internal.display.cutout.emulation.hole', '[x] com.android.internal.systemui.navbar.gestural']",
+      "elapsedSeconds": 19.649,
+      "passed": 5
+    },
+    {
+      "resolution": "1440x2560",
+      "densityDpi": 560,
+      "cutout": "corner",
+      "navigation": "threebutton",
+      "enabledOverlays": "['[x] com.android.internal.display.cutout.emulation.corner', '[x] com.android.internal.systemui.navbar.threebutton']",
+      "elapsedSeconds": 20.629,
+      "passed": 5
+    },
+    {
+      "resolution": "1600x2560",
+      "densityDpi": 280,
+      "cutout": "None",
+      "navigation": "gestural",
+      "enabledOverlays": "['[x] com.android.internal.systemui.navbar.gestural']",
+      "elapsedSeconds": 24.708,
+      "passed": 5
+    }
+  ],
+  "legacyUpgrade": {
+    "versionName": "0.1.0",
+    "sourceBytes": 59109,
+    "resultBytes": 50816,
+    "sourceSha256": "22e54c73bd0b448e3994570120161a34e1cb81b3c68884a219c7bd6d70c74bbb",
+    "resultSha256": "5e6208fdaaf7eb77e048d58ebc3e814cfd0fa954578b794e56913ef6095fc574",
+    "unchangedAfterUpgrade": true
+  }
+}
