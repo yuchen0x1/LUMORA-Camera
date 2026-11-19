@@ -68,7 +68,7 @@ dependencies {
     implementation("androidx.camera:camera-extensions:1.6.2")
 
     implementation("androidx.exifinterface:exifinterface:1.3.7")
-    implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation("androidx.documentfile:documentfile:1.1.0")
     implementation("androidx.window:window:1.2.0")
 
     testImplementation("junit:junit:4.13.2")
