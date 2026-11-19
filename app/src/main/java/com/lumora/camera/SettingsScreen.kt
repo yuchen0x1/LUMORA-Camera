@@ -18,20 +18,22 @@ import androidx.compose.ui.unit.dp
 import com.lumora.camera.camera.DeviceCapabilities
 import com.lumora.camera.data.OptimizationStrength
 import com.lumora.camera.data.PhotoRepository
+import com.lumora.camera.update.UpdateFrequency
+import com.lumora.camera.update.UpdateState
+import com.lumora.camera.update.UpdateViewModel
 import kotlin.reflect.KMutableProperty0
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun SettingsScreen(repository: PhotoRepository, lens: DeviceCapabilities?, onBack: () -> Unit) {
+internal fun SettingsScreen(
+    repository: PhotoRepository, lens: DeviceCapabilities?, updates: UpdateViewModel, onBack: () -> Unit
+) {
     val context = LocalContext.current
     val settings = remember(context) { CameraSettings(context) }
     val records = remember(repository) { repository.getRecords() }
     var previewQuality by remember { mutableStateOf(repository.previewQuality) }
     var strength by remember { mutableStateOf(repository.optimizationStrength) }
     var jpegQuality by remember { mutableIntStateOf(settings.jpegQuality) }
-    val version = remember {
-        context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
-    }
     Column(Modifier.fillMaxSize().background(Background).safeDrawingPadding()) {
         TopAppBar(title = { Text("设置") }, navigationIcon = {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
@@ -82,7 +84,12 @@ internal fun SettingsScreen(repository: PhotoRepository, lens: DeviceCapabilitie
                 Info("RAW / DNG", if (lens.supportsRaw) "硬件支持 · 当前输出 JPEG" else "当前镜头不可用")
             }
             Section("关于")
-            Info("LUMORA Camera", version)
+            Info("LUMORA Camera", updates.installedVersion)
+            Choice("检查更新频率", updates.frequency.label, UpdateFrequency.entries.map { it.label }, updates::changeFrequency)
+            TextButton(onClick = { updates.check(manual = true) }, enabled = updates.state != UpdateState.Checking) {
+                Text(if (updates.state == UpdateState.Checking) "正在检查…" else "检查更新")
+            }
+            (updates.state as? UpdateState.Notice)?.let { Text(it.text, color = Muted) }
             Spacer(Modifier.height(24.dp))
         }
     }

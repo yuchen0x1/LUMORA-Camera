@@ -33,6 +33,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lumora.camera.camera.DeviceCapabilities
 import com.lumora.camera.data.FilmPresets
 import com.lumora.camera.data.PhotoRepository
+import com.lumora.camera.update.UpdateDialog
+import com.lumora.camera.update.UpdateViewModel
 
 internal val Ink = Color(0xFFF4F1EB)
 internal val Muted = Color(0xFFB1AEA8)
@@ -92,6 +94,7 @@ class MainActivity : ComponentActivity() {
         val repository = remember { PhotoRepository(applicationContext) }
         val presets = remember { FilmPresets.load(applicationContext) }
         val device: CameraDeviceState = viewModel()
+        val updates: UpdateViewModel = viewModel()
         val savedScreens = rememberSaveableStateHolder()
         var screen by rememberSaveable { mutableStateOf(AppScreen.CAMERA) }
         var granted by remember { mutableStateOf(cameraAllowed()) }
@@ -100,9 +103,12 @@ class MainActivity : ComponentActivity() {
             granted = it
             asked = true
         }
-        DisposableEffect(lifecycle) {
+        DisposableEffect(lifecycle, updates) {
             val observer = LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) granted = cameraAllowed()
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    granted = cameraAllowed()
+                    if (granted) updates.check(manual = false)
+                }
             }
             lifecycle.addObserver(observer)
             onDispose { lifecycle.removeObserver(observer) }
@@ -121,7 +127,7 @@ class MainActivity : ComponentActivity() {
                         onCapabilities = { device.lastLens = it })
                     }
                     AppScreen.GALLERY -> GalleryScreen(repository) { screen = AppScreen.CAMERA }
-                    AppScreen.SETTINGS -> SettingsScreen(repository, device.lastLens) { screen = AppScreen.CAMERA }
+                    AppScreen.SETTINGS -> SettingsScreen(repository, device.lastLens, updates) { screen = AppScreen.CAMERA }
                 }
             } else {
                 Column(Modifier.safeDrawingPadding().padding(28.dp), Arrangement.Center, Alignment.CenterHorizontally) {
@@ -137,6 +143,7 @@ class MainActivity : ComponentActivity() {
                     }) { Text(if (openSettings) "前往系统设置" else "开启相机") }
                 }
             }
+            UpdateDialog(updates)
         }
     }
 }

@@ -1,6 +1,12 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
+}
+
+val appVersion = Properties().apply {
+    rootProject.file("version.properties").inputStream().use(::load)
 }
 
 android {
@@ -9,10 +15,10 @@ android {
 
     defaultConfig {
         applicationId = "com.lumora.camera"
-        minSdk = 29
+        minSdk = appVersion.getProperty("minSdk").toInt()
         targetSdk = 35
-        versionCode = 2
-        versionName = "2.0.0"
+        versionCode = appVersion.getProperty("versionCode").toInt()
+        versionName = appVersion.getProperty("versionName")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -63,6 +69,7 @@ dependencies {
 
     implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation("androidx.window:window:1.2.0")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

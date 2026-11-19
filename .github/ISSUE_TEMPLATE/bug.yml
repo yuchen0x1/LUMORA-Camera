@@ -1,0 +1,17 @@
+name: 故障 / 设备兼容
+description: 报告拍摄、编辑、相册故障或系统与镜头兼容问题
+body:
+  - type: input
+    id: device
+    attributes:
+      label: 版本和设备
+      description: 应用版本、Android 版本、设备型号、镜头与拍摄模式
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤、实际结果和期望结果
+      description: 可附去除位置、人物与隐私信息的截图或成像诊断
+    validations:
+      required: true

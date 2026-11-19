@@ -1,0 +1,139 @@
+package com.lumora.camera.update
+
+import android.app.Application
+import android.content.Intent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
+import kotlin.math.max
+
+internal enum class UpdateFrequency(val label: String, val days: Long) {
+    MANUAL("仅手动", 0), DAILY("每天", 1), WEEKLY("每周", 7)
+}
+
+internal sealed interface UpdateState {
+    data object Idle : UpdateState
+    data object Checking : UpdateState
+    data class Notice(val text: String) : UpdateState
+    data class Available(val offer: UpdateOffer) : UpdateState
+    data class Downloading(val offer: UpdateOffer, val received: Long = 0, val bytesPerSecond: Long = 0) : UpdateState
+    data class Ready(val offer: UpdateOffer) : UpdateState
+}
+
+internal class UpdateViewModel(application: Application) : AndroidViewModel(application) {
+    private val updater = AndroidUpdater(application)
+    private val prefs = application.getSharedPreferences("lumora_updates", 0)
+    val installedVersion get() = updater.versionName
+    var frequency by mutableStateOf(UpdateFrequency.entries.firstOrNull {
+        it.name == prefs.getString("frequency", null)
+    } ?: UpdateFrequency.MANUAL)
+        private set
+    var state by mutableStateOf<UpdateState>(UpdateState.Idle)
+        private set
+    private var job: Job? = null
+
+    fun changeFrequency(label: String) {
+        frequency = UpdateFrequency.entries.first { it.label == label }
+        prefs.edit().putString("frequency", frequency.name).apply()
+        if (frequency != UpdateFrequency.MANUAL) check(manual = false)
+    }
+
+    fun check(manual: Boolean) {
+        if (job?.isActive == true || state is UpdateState.Available || state is UpdateState.Ready) return
+        val now = System.currentTimeMillis()
+        val last = prefs.getLong("lastChecked", 0)
+        if (!manual && (frequency == UpdateFrequency.MANUAL ||
+                (last <= now && now - last < TimeUnit.DAYS.toMillis(frequency.days)))) return
+        prefs.edit().putLong("lastChecked", now).apply()
+        if (manual) state = UpdateState.Checking
+        job = viewModelScope.launch {
+            try {
+                val offer = updater.check()
+                val deferred = offer?.release?.name == prefs.getString("laterVersion", null) &&
+                    now < prefs.getLong("laterUntil", 0)
+                state = when {
+                    offer != null && (manual || !deferred) -> UpdateState.Available(offer)
+                    manual -> UpdateState.Notice("没有可用的正式更新")
+                    else -> UpdateState.Idle
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                state = if (manual) UpdateState.Notice(message(error, "检查更新失败，请确认网络后重试"))
+                else UpdateState.Idle
+            }
+        }
+    }
+
+    fun incompatibility(offer: UpdateOffer) = updater.incompatibility(offer)
+
+    fun later(offer: UpdateOffer) {
+        prefs.edit().putString("laterVersion", offer.release.name)
+            .putLong("laterUntil", System.currentTimeMillis() + TimeUnit.DAYS.toMillis(7)).apply()
+        if (state is UpdateState.Ready) updater.clearDownloaded()
+        state = UpdateState.Idle
+    }
+
+    fun download(offer: UpdateOffer) {
+        if (job?.isActive == true || state != UpdateState.Available(offer)) return
+        state = UpdateState.Downloading(offer)
+        job = viewModelScope.launch {
+            try {
+                val started = System.nanoTime()
+                var last = started
+                updater.download(offer) { received ->
+                    val now = System.nanoTime()
+                    if (now - last >= 250_000_000L) {
+                        last = now
+                        val elapsed = max(1L, TimeUnit.NANOSECONDS.toMillis(now - started))
+                        state = UpdateState.Downloading(offer, received, received * 1000 / elapsed)
+                    }
+                }
+                state = UpdateState.Ready(offer)
+            } catch (error: CancellationException) {
+                state = UpdateState.Available(offer)
+                throw error
+            } catch (error: Exception) {
+                state = UpdateState.Notice(message(error, "下载中断或写入失败，请重新检查并下载"))
+            }
+        }
+    }
+
+    fun cancelDownload() {
+        if (state is UpdateState.Downloading) job?.cancel()
+    }
+
+    fun install(offer: UpdateOffer, launch: (Intent) -> Unit) {
+        if (job?.isActive == true || state != UpdateState.Ready(offer)) return
+        job = viewModelScope.launch {
+            try {
+                launch(updater.installIntent(offer))
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                updater.clearDownloaded()
+                state = UpdateState.Notice(message(error, "无法启动系统安装，请重新下载"))
+            }
+        }
+    }
+
+    fun installationReturned() {
+        if (state is UpdateState.Ready) {
+            updater.clearDownloaded()
+            state = UpdateState.Notice("系统安装已结束，当前仍可使用；如需重试请再次检查更新")
+        }
+    }
+
+    fun clearNotice() {
+        if (state is UpdateState.Notice) state = UpdateState.Idle
+    }
+
+    private fun message(error: Exception, fallback: String) =
+        (error as? UpdateFailure)?.message ?: fallback
+}

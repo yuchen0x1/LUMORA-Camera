@@ -2,6 +2,11 @@
 .kotlin/
 *.jks
 *.keystore
+*.p12
+*.pfx
+.env
+.env.*
+__pycache__/
 keystore.properties
 build/
 */build/

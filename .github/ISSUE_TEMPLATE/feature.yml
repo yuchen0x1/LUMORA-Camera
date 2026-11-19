@@ -1,0 +1,14 @@
+name: 功能建议
+description: 提出拍摄、胶片处理或编辑工作流需求
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: 摄影场景、当前步骤和期望变化
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: 设备和使用方式
+      description: 手机、平板、折叠屏，或需要外设的场景

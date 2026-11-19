@@ -34,6 +34,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.*
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -44,6 +45,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.Observer
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.window.layout.FoldingFeature
+import androidx.window.layout.WindowInfoTracker
 import com.lumora.camera.camera.*
 import com.lumora.camera.data.*
 import com.lumora.camera.image.PhotoEnhancementEngine
@@ -81,6 +84,15 @@ internal fun CameraScreen(
     }
     val controller = remember(context, repository) { CameraController(context, repository) }
     val activity = owner as? MainActivity ?: context as? MainActivity
+    val fold by produceState<FoldingFeature?>(null, activity) {
+        if (activity != null) {
+            WindowInfoTracker.getOrCreate(activity).windowLayoutInfo(activity).collect { layout ->
+                value = layout.displayFeatures.filterIsInstance<FoldingFeature>().firstOrNull {
+                    it.isSeparating || it.occlusionType == FoldingFeature.OcclusionType.FULL
+                }
+            }
+        }
+    }
     val latestOnCapabilities by rememberUpdatedState(onCapabilities)
     var resumed by remember(owner) { mutableStateOf(owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) }
     var streaming by remember { mutableStateOf(false) }
@@ -257,9 +269,30 @@ internal fun CameraScreen(
     val cameraState = capabilities?.let { "${it.lensFacing} · ${it.cameraId} · ${activeMode.name}" } ?: "连接中"
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
+        val width = constraints.maxWidth
+        val height = constraints.maxHeight
+        val hingePadding = with(LocalDensity.current) {
+            val feature = fold
+            when (feature?.orientation) {
+                FoldingFeature.Orientation.VERTICAL -> {
+                    val pane = unobstructedPane(width, feature.bounds.left, feature.bounds.right)
+                    Modifier.absolutePadding(left = pane.start.toDp(), right = (width - pane.end).toDp())
+                }
+                FoldingFeature.Orientation.HORIZONTAL -> {
+                    val pane = unobstructedPane(height, feature.bounds.top, feature.bounds.bottom)
+                    Modifier.padding(top = pane.start.toDp(), bottom = (height - pane.end).toDp())
+                }
+                else -> Modifier
+            }
+        }
+        BoxWithConstraints(Modifier.fillMaxSize().then(hingePadding)) {
         val longSideRatio = if (wide) 16f / 9f else 4f / 3f
         val viewfinderRatio = if (maxWidth > maxHeight) longSideRatio else 1f / longSideRatio
-        Box(Modifier.align(Alignment.Center).aspectRatio(viewfinderRatio).clipToBounds()) {
+        val roomy = maxWidth >= 600.dp && maxHeight >= 420.dp
+        val rail = 96.dp
+        val previewSpace = if (roomy) Modifier.padding(end = rail) else Modifier
+        Box(Modifier.fillMaxSize().then(previewSpace), contentAlignment = Alignment.Center) {
+        Box(Modifier.aspectRatio(viewfinderRatio).clipToBounds().testTag("camera-viewfinder")) {
             AndroidView(factory = { preview }, modifier = Modifier.fillMaxSize())
             if (resumed && streaming) PhotographyOverlay(
                 preview, aids, preset, strength, repository.previewQuality, Modifier.fillMaxSize(),
@@ -283,6 +316,7 @@ internal fun CameraScreen(
                     Text(state, Modifier.background(Panel).padding(horizontal = 3.dp), color = Ink, fontSize = 10.sp)
                 }
             }
+        }
         }
         BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeContent)) {
             val landscape = maxWidth > maxHeight
@@ -391,14 +425,15 @@ internal fun CameraScreen(
                 }
                 val actions: @Composable (Boolean) -> Unit = { vertical ->
                     val cameras = capabilities?.availableCameras.orEmpty()
-                    CameraActions(vertical, ready, !busy, latestCapture, cameraState, !busy && !applying && cameras.size > 1, ::trigger,
+                    CameraActions(vertical, if (roomy) rail else 86.dp, ready, !busy, latestCapture, cameraState,
+                        !busy && !applying && cameras.size > 1, ::trigger,
                         onOpenGallery, {
                             val other = cameras.firstOrNull { it.facing != capabilities?.lensFacing && it.id != capabilities?.cameraId }
                                 ?: cameras.firstOrNull { it.id != capabilities?.cameraId }
                             other?.let { selectLens(it.id) }
                         })
                 }
-                if (landscape) {
+                if (landscape || roomy) {
                     Row(Modifier.weight(1f)) {
                         Column(Modifier.weight(1f)) { content(Modifier.weight(1f).fillMaxWidth()); strip() }
                         actions(true)
@@ -410,7 +445,15 @@ internal fun CameraScreen(
                 }
             }
         }
+        }
     }
+}
+
+internal data class CameraPane(val start: Int, val end: Int)
+
+internal fun unobstructedPane(size: Int, hingeStart: Int, hingeEnd: Int): CameraPane {
+    if (hingeStart <= 0 || hingeEnd < hingeStart || hingeEnd >= size) return CameraPane(0, size)
+    return if (hingeStart >= size - hingeEnd) CameraPane(0, hingeStart) else CameraPane(hingeEnd, size)
 }
 
 @Composable
@@ -492,7 +535,8 @@ private fun CameraFilmSwitch(preset: FilmPreset, caps: DeviceCapabilities?, zoom
 
 @Composable
 private fun CameraActions(
-    vertical: Boolean, ready: Boolean, canOpenGallery: Boolean, latestCapture: String?, cameraState: String,
+    vertical: Boolean, railWidth: androidx.compose.ui.unit.Dp, ready: Boolean,
+    canOpenGallery: Boolean, latestCapture: String?, cameraState: String,
     canSwitch: Boolean, capture: () -> Unit, gallery: () -> Unit, switchLens: () -> Unit
 ) {
     val galleryButton: @Composable () -> Unit = { GalleryShortcut(latestCapture, canOpenGallery, gallery) }
@@ -510,7 +554,7 @@ private fun CameraActions(
                     Row { galleryButton(); switchButton() }
                     shutter()
                 }
-            } else Column(Modifier.fillMaxHeight().width(86.dp), Arrangement.SpaceEvenly, Alignment.CenterHorizontally) {
+            } else Column(Modifier.fillMaxHeight().width(railWidth), Arrangement.SpaceEvenly, Alignment.CenterHorizontally) {
                 galleryButton(); shutter(); switchButton()
             }
         }
