@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.0 - 2026-11-20
+
+- 新增应用内更新：检查新版本、展示更新说明并引导下载安装（UpdateDialog / AndroidUpdater / UpdateProtocol / UpdateViewModel），配套 FileProvider 路径配置。
+- 版本号集中到 version.properties 管理（2.1.0 / versionCode 3）。
+- 相机与设置界面改进，Gradle Wrapper 更新；新增 CI、发布、维护工作流与平台/研究文档。
+
 ## 2.0.0 - 2026-11-18
 
 - 修复顶部和底部控件与系统栏、挖孔及手势区域重叠的问题，支持横屏拍摄和紧凑的专业控制面板。
