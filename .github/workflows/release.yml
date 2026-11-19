@@ -47,7 +47,7 @@ jobs:
           EXPECTED_SIGNER: ${{ vars.ANDROID_SIGNER_SHA256 }}
         run: python3 scripts/release/android.py new-tag "$GITHUB_REF_NAME" --certificate "$EXPECTED_SIGNER"
       - run: |
-          sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+          ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_HOME} 'platforms;android-36' 'build-tools;36.0.0'
           bash gradlew --no-daemon :app:assembleRelease
       - name: Sign and validate APK
         env:
