@@ -7,6 +7,13 @@ import com.lumora.camera.data.OptimizationStrength
 import com.lumora.camera.data.PhotoRecord
 import com.lumora.camera.data.PhotoRepository
 import com.lumora.camera.image.PhotoEditParameters
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Test
@@ -47,6 +54,83 @@ class PhotoRepositoryMigrationTest {
         assertEquals(setOf("vintage"), reopened.favoriteStyleIds)
         reopened.removeRecord(version)
         assertEquals(listOf(one, old), repo.getRecords())
+    }
+
+    @Test fun malformedIndexIsPreservedWhenNewCapturesAreAdded() {
+        val damaged = "{truncated"
+        prefs.edit().putString("records", damaged).commit()
+        assertTrue(repo.getRecords().isEmpty())
+        assertEquals(damaged, prefs.getString("records", null))
+        repo.setFavorite("missing", true)
+        assertEquals(damaged, prefs.getString("records", null))
+
+        val record = PhotoRecord("source", "result", "natural", 1)
+        repo.addRecord(record)
+        assertEquals(listOf(record), PhotoRepository(context, namespace).getRecords())
+        assertEquals(listOf(damaged), prefs.all.filterKeys { it.startsWith("recordsRecovery.") }.values.toList())
+
+        repo.setFavorite("result", true)
+        assertEquals(1, prefs.all.keys.count { it.startsWith("recordsRecovery.") })
+        prefs.edit().putString("records", "[broken").commit()
+        repo.addRecord(record.copy(enhancedUri = "second"))
+        assertEquals(setOf(damaged, "[broken"),
+            prefs.all.filterKeys { it.startsWith("recordsRecovery.") }.values.toSet())
+    }
+
+    @Test fun observationContinuesAfterReplacingADamagedIndex() = runBlocking {
+        withTimeout(10_000) {
+            prefs.edit().putString("records", "{truncated").commit()
+            val initial = CompletableDeferred<Unit>()
+            val emissions = async {
+                repo.observeRecords().onEach { if (it.isEmpty()) initial.complete(Unit) }
+                    .take(2).toList()
+            }
+            initial.await()
+            val record = PhotoRecord("source", "result", "natural", 1)
+            PhotoRepository(context, namespace).addRecord(record)
+            assertEquals(listOf(emptyList<PhotoRecord>(), listOf(record)), emissions.await())
+        }
+        Unit
+    }
+
+    @Test fun nonArrayIndexesRemainUnchangedWhenRead() {
+        listOf("", "null", "{}", "not-json").forEach { damaged ->
+            prefs.edit().putString("records", damaged).commit()
+            assertTrue(repo.getRecords().isEmpty())
+            assertEquals(damaged, prefs.getString("records", null))
+        }
+    }
+
+    @Test fun styleIntensityIsFiniteAndClampedOnReadAndWrite() {
+        listOf(Float.NaN, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY).forEach { invalid ->
+            prefs.edit().putFloat("styleIntensity", invalid).commit()
+            assertEquals(1f, repo.styleIntensity, 0f)
+            repo.styleIntensity = invalid
+            assertEquals(1f, prefs.getFloat("styleIntensity", 0f), 0f)
+        }
+        repo.styleIntensity = -0.5f
+        assertEquals(0f, repo.styleIntensity, 0f)
+        repo.styleIntensity = 1.5f
+        assertEquals(1f, repo.styleIntensity, 0f)
+        repo.styleIntensity = 0.4f
+        assertEquals(0.4f, repo.styleIntensity, 0f)
+    }
+
+    @Test fun recordIntensityIsNormalizedOnReadAndWrite() {
+        prefs.edit().putString("records", """[
+            {"originalUri":"source","enhancedUri":"legacy","intensity":"NaN"},
+            {"originalUri":"source","enhancedUri":"large","intensity":3},
+            {"originalUri":"source","enhancedUri":"negative","intensity":-2}
+        ]""").commit()
+        assertEquals(mapOf("legacy" to 1f, "large" to 1f, "negative" to 0f),
+            repo.getRecords().associate { it.enhancedUri to it.intensity })
+        listOf(Float.NaN, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY, -1f, 2f, 0.6f)
+            .forEachIndexed { index, intensity ->
+                val uri = "result-$index"
+                repo.addRecord(PhotoRecord("source", uri, "natural", index.toLong(), intensity = intensity))
+                val expected = if (intensity.isFinite()) intensity.coerceIn(0f, 1f) else 1f
+                assertEquals(expected, repo.getRecords().first { it.enhancedUri == uri }.intensity, 0f)
+            }
     }
 
     @Test fun completedCaptureReplacesOnlyItsSourcePlaceholder() {

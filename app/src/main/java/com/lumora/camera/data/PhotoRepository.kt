@@ -11,7 +11,9 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
+import java.util.UUID
 import java.util.WeakHashMap
 
 enum class OptimizationStrength(val label: String, val factor: Float) {
@@ -48,8 +50,15 @@ class PhotoRepository(context: Context, namespace: String = "lumora_preferences"
         val pendingUndo = WeakHashMap<RemovedPhoto, Unit>()
     }
 
+    private fun recordArray(): JSONArray? = try {
+        JSONArray(prefs.getString("records", "[]") ?: "[]")
+    } catch (_: JSONException) {
+        null
+    }
+
     fun getRecords(): List<PhotoRecord> {
-        val array = JSONArray(prefs.getString("records", "[]") ?: "[]")
+        // Reading a damaged index must neither crash the UI nor change the stored data.
+        val array = recordArray() ?: return emptyList()
         return buildList {
             for (index in 0 until array.length()) {
                 val item = array.optJSONObject(index) ?: continue
@@ -62,7 +71,7 @@ class PhotoRepository(context: Context, namespace: String = "lumora_preferences"
                     originalUri = source, enhancedUri = enhanced, createdAt = time,
                     styleId = item.optString("styleId", "natural"),
                     strength = readStrength(item.optString("strength")),
-                    intensity = item.optDouble("intensity", 1.0).toFloat().coerceIn(0f, 1f),
+                    intensity = normalizeIntensity(item.optDouble("intensity", 1.0).toFloat()),
                     edits = readEdits(item.optJSONObject("edits")), favorite = item.optBoolean("favorite"),
                     sourceOnly = sourceOnly, imported = item.optBoolean("imported"),
                     parentUri = item.optString("parentUri").takeIf(String::isNotBlank),
@@ -136,7 +145,7 @@ class PhotoRepository(context: Context, namespace: String = "lumora_preferences"
     private fun updateRecords(transform: (List<PhotoRecord>) -> List<PhotoRecord>) = synchronized(prefs) {
         val current = getRecords()
         val updated = transform(current)
-        if (updated === current) return@synchronized
+        if (updated == current) return@synchronized
         val array = JSONArray()
         updated.forEach { r ->
             array.put(JSONObject().apply {
@@ -147,7 +156,7 @@ class PhotoRepository(context: Context, namespace: String = "lumora_preferences"
                 put("capturedAt", r.capturedAt)
                 put("favorite", r.favorite)
                 put("strength", r.strength.name)
-                put("intensity", r.intensity.toDouble())
+                put("intensity", normalizeIntensity(r.intensity).toDouble())
                 put("edits", editJson(r.edits))
                 put("sourceOnly", r.sourceOnly)
                 put("sourceIsRendered", r.sourceIsRendered)
@@ -157,7 +166,13 @@ class PhotoRepository(context: Context, namespace: String = "lumora_preferences"
                 put("diagnostics", r.diagnostics)
             })
         }
-        prefs.edit().putInt("recordSchema", 2).putString("records", array.toString()).apply()
+        val editor = prefs.edit().putInt("recordSchema", 2).putString("records", array.toString())
+        if (recordArray() == null) {
+            // Keep each damaged index in the same atomic edit as its replacement. Never
+            // overwrite earlier recovery data or delete any of the underlying media.
+            editor.putString("recordsRecovery.${UUID.randomUUID()}", prefs.getString("records", null))
+        }
+        editor.apply()
     }
 
     val favoriteStyleIds: Set<String> get() = prefs.getStringSet("favoriteStyleIds", emptySet()).orEmpty().toSet()
@@ -176,8 +191,8 @@ class PhotoRepository(context: Context, namespace: String = "lumora_preferences"
         set(value) { prefs.edit().putString("styleSampleUri", value).apply() }
 
     var styleIntensity: Float
-        get() = prefs.getFloat("styleIntensity", 1f)
-        set(value) { prefs.edit().putFloat("styleIntensity", value.coerceIn(0f, 1f)).apply() }
+        get() = normalizeIntensity(prefs.getFloat("styleIntensity", 1f))
+        set(value) { prefs.edit().putFloat("styleIntensity", normalizeIntensity(value)).apply() }
 
     var optimizationStrength: OptimizationStrength
         get() = readStrength(prefs.getString("optimizationStrength", "STANDARD"))
@@ -199,6 +214,9 @@ class PhotoRepository(context: Context, namespace: String = "lumora_preferences"
 
     private fun readStrength(name: String?): OptimizationStrength =
         OptimizationStrength.entries.firstOrNull { it.name == name } ?: OptimizationStrength.STANDARD
+
+    private fun normalizeIntensity(value: Float): Float =
+        value.takeIf(Float::isFinite)?.coerceIn(0f, 1f) ?: 1f
 
     private fun editJson(edits: PhotoEditParameters) = JSONObject().apply {
         put("exposure", edits.exposure.toDouble())
