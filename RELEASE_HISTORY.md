@@ -9,6 +9,16 @@
 | 2.1.1 / code 4 | 元数据已随 PR #6 合并进 main，未打标签、未发布 | 纯 version.properties/CHANGELOG/README/PLATFORMS 准备，被 2.1.2 取代。 |
 | **v2.1.2 / code 6** | **正式发布成功（2026-11-21）** | 见下方“v2.1.2 发布证据”。 |
 | **v2.1.3 / code 7** | **正式发布成功（2026-11-21）** | [稳定版下载](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.3) · [发布流水线](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44799665199) |
+| **v2.1.4 / code 8** | **正式发布成功（2026-11-21）** | [稳定版下载](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.4) · [发布流水线](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44830235233) |
+
+## v2.1.4 发布证据
+
+- 发布源码提交为 `cee74b11903eae0d8da63562e7898c14d3896925`，先快进进入并推送远程 `main`，再创建新注解标签 `v2.1.4`；标签对象为 `cf672109173daf428023b2302c0bf409a094388a`，未移动、复用旧标签。
+- [主线 CI](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44830165253)、[依赖检查](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44830165297)和发布流水线全部成功；发布包含构建/Lint、API 29/35 仪器门禁、正式签名、签名包安装启动、草稿和公开资产核验。
+- GitHub 确认为最新公开稳定版，`draft=false`、`prerelease=false`，发布时间 `2026-11-20T22:44:55Z`（UTC；本地报告日期为 2026-11-21）。资产均为 uploaded：APK 50,214,074 字节、`android-update.json` 439 字节、`SHA256SUMS.txt` 194 字节。
+- 公开下载 APK 的 SHA-256 为 `cd046033b89cc9d5e453feb2900b35534f07ea6439a2accbe1c3a0bcb4c54d0e`，与 GitHub 资产摘要、更新元数据和摘要清单完全一致；元数据本身的 SHA-256 为 `c05ad17d418fad51869375a5bffa5300904baa855fa7df329a3bf610ebae488d`。独立执行 `scripts/release/android.py public --tag v2.1.4` 通过。
+- `apksigner verify --verbose --print-certs` 验证 v3、单一 RSA 3072 位证书，SHA-256 指纹 `c5bec00b0721f580823a9bc9acda5285fa1c5e108ed3798d0ee3bc626c157985` 与 2.1.3 及元数据相同。`aapt` 确认 `com.lumora.camera`、versionName 2.1.4、versionCode 8、minSdk 29、targetSdk 35、非 debuggable；`zipalign -c -P 16 4` 成功。
+- 独立新建 Android 10 测试环境，先安装公开正式 2.1.3，真实拍摄并收藏一项作品、关闭音量键快门，再以 `adb install -r` 覆盖到公开正式 2.1.4 并冷启动成功。作品仍为“全部 1、收藏 1”，原图/成片均可打开，关闭的偏好保留，两个 JPEG 的 SHA-256 逐字节一致；无卸载、无 `pm clear`。详见 [验收报告](docs/TEST_REPORT.md)。此覆盖安装不等同于真实系统安装器取消的验收。
 
 ## v2.1.3 发布证据
 

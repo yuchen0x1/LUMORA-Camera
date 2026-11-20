@@ -17,13 +17,22 @@
 
 - API 29 首次完整运行：58 项中 1 项失败。音量键测试遇到 `INJECT_EVENTS` SecurityException；`dumpsys window` 明确显示 `Application Not Responding: com.android.systemui` 抢占焦点。保留首次失败日志，重启模拟器但不清除应用数据，完整重跑 58 项通过。
 - API 35 首次运行在第 50 项期间进程崩溃，crash buffer 为系统 `libhwui.so` 的 `AnimatorManager::pushStaging` / RenderThread SIGSEGV，不能计作通过。将测试动画与 CI 的关闭配置对齐，更新专项 23 项通过，再完整重跑 58 项及平板 18 项通过。没有通过禁用生产硬件加速或改动应用功能掩盖异常。
-- 完整原始日志位于本轮独立工作树 `build/instrumentation-214-*.txt`，APK 与 JVM/Lint 报告位于 `app/build`；这些机器生成文件不纳入源码提交。正式流水线会再次执行同样的双 API 质量门禁。
+- 完整原始日志位于本轮独立工作树 `build/instrumentation-214-*.txt`，APK 与 JVM/Lint 报告位于 `app/build`；这些机器生成文件不纳入源码提交。[主线 CI](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44830165253) 与 [正式发布流水线](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44830235233) 已再次通过构建、Lint 和双 API 质量门禁。
+- 公开资产复核首次使用 PATH 中的 Python 3.8.6，在 `hashlib.file_digest` 处失败；定位为解释器版本不兼容，改用已安装 Python 3.14 后原脚本通过。未改动脚本、重复发布或重新上传资产。
 
 ### 安全与范围边界
 
 - 协议测试覆盖稳定版选择、数值版本排序、重复/未上传资产、固定 URL、大小/摘要、包名/协议/版本码/SDK/证书格式及 HTTPS 重定向负向输入。ViewModel 测试使用独立偏好命名空间和伪更新客户端，不把它等同于真实 APK 证书或生产阻塞 I/O 的完整验收。
-- 静态暴露扫描针对本地未签名 Release，报告未签名高风险是该中间产物的预期属性；不能发布此文件。Manifest 的 allowBackup 提示保留为策略候选；MIT 开源 DEX 的可读性不是保密保证。最终签名资产仍须另外复核。
+- 初始静态暴露扫描针对本地未签名 Release，未签名高风险是该中间产物的预期属性，未发布此文件。另对公开正式 APK 复测并与该基线比较，签名缺失项消失、allowBackup 低风险策略候选仍在、无新增项。扫描器仅识别签名块，其 v2/v3 摘要不作密码学结论；以 apksigner 的 v3 验证成功、v2=false 为准。MIT 开源 DEX 可读性不应被包装为可保密或绝对安全。
 - 本轮未重跑 100 张独立耐久套件，未取得厂商扩展、实体画质/峰值内存、真实安装器取消和生产断流取消的完整实测证据。不声称拍摄、显影性能提升。
+
+### 正式包公开下载与保留数据升级
+
+- 公开稳定版 `v2.1.4`，发布提交 `cee74b11903eae0d8da63562e7898c14d3896925`。发布时间 `2026-11-20T22:44:55Z` 为 UTC，本地记录日期为 2026-11-21。发布 run `44830235233` 全部门禁通过，未手工上传替代 APK。
+- 下载到全新空目录后，APK 实测 50,214,074 字节、SHA-256 `cd046033b89cc9d5e453feb2900b35534f07ea6439a2accbe1c3a0bcb4c54d0e`，与 GitHub 摘要、更新元数据和 `SHA256SUMS.txt` 一致；独立执行公开资产检查脚本通过。apksigner 验证单一 v3 正式证书，与 2.1.3 相同；aapt 确认为 code 8 / minSdk 29 / 非 debuggable，zipalign 检查通过。完整证书指纹见 [发布历史](../RELEASE_HISTORY.md)。
+- 使用独立新建的 API 29 AVD `lumora_release214_verify`，先装公开 2.1.3，拍摄一组真实模拟镜头 JPEG、收藏作品并关闭音量键快门，再以 `adb install -r` 覆盖安装公开 2.1.4。冷启动 `Status: ok`、versionCode 8、versionName 2.1.4；作品页“全部 1、收藏 1”，原图/成片均实际显示，关闭的音量键快门保持 false。未卸载、未清除数据、未使用调试签名包冒充正式升级。
+- 原图 SHA-256 升级前后均为 `ca8621fc074aa60e8b047dab9be41a42e911c892957da13f2a839bc1e21a16f8`；成片均为 `59774224016dc124e531a4b9b54320e4c28f05ef55117d9166dc2cfb7cbcaf1c`。本机 `build/release-upgrade-before-sha256.txt` 与 `build/release-upgrade-after-sha256.txt` 的 diff 为空；相关 UI 层级及运行截图保留于 `build/release214-*`，不含用户真实照片。
+- 升级 AVD 的 crash buffer 仅看到安装应用前的 `com.android.sdksetup` Unknown/Unknown 时区异常，本次检查未看到 `com.lumora.camera` 崩溃；这不是长时间稳定性证明。ADB 覆盖安装亦不等同于真实系统安装器交互/取消验收。
 
 ## 2.1.3：相机权限与作品库导航（2026-11-21）
 
