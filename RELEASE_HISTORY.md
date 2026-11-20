@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | v2.0.0 | 历史调试签名预发布，非正式稳定版 | GitHub 公开资产只有 LUMORA-Camera-2.0.0-debug-test.apk；保留历史标签和资产。 |
 | v2.1.0 | 历史标签；正式发布失败 | Actions 的 Publish signed Android APK 未成功；不移动标签、不创建空 Release。 |
-| 2.1.1 / code 4 | 历史候选，未合并 PR #6 | 只含旧候选元数据及说明，不代表已发布。 |
+| 2.1.1 / code 4 | 元数据已随 PR #6 合并进 main，未打标签、未发布 | 纯 version.properties/CHANGELOG/README/PLATFORMS 准备，被 2.1.2 取代。 |
 | 本轮新版本 | 尚未发布 | 待最终源码验收、独立提交/PR/CI、合并主分支、新标签与签名资产公开验证。 |
 
 ## 本轮发布门禁
