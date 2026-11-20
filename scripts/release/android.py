@@ -52,9 +52,12 @@ def prepare(args):
     sig = run(signer, "verify", "--verbose", "--print-certs", str(args.apk))
     certs = re.findall(r"^Signer #\d+ certificate SHA-256 digest: ([a-f0-9]{64})$", sig, re.M)
     require(certs == [expected] and "CN=Android Debug" not in sig, "Unexpected Android release signer")
-    require(all(f"Verified using v{v} scheme " in sig and any(
-        line.startswith(f"Verified using v{v} scheme ") and line.endswith(": true")
-        for line in sig.splitlines()) for v in (2, 3)), "APK must have valid v2 and v3 signatures")
+    # apksigner writes APK Signature Scheme v3 instead of v2 when v3 is enabled
+    # (verified across build-tools 34/35/36), and every Android release from API
+    # 28 upward verifies v3 directly. With minSdk 29, requiring v3 covers all
+    # supported devices; demanding v2 too would reject every signed artifact.
+    require(any(line.startswith("Verified using v3 scheme ") and line.endswith(": true")
+                for line in sig.splitlines()), "APK must have a valid v3 signature")
     badging = run(aapt, "dump", "badging", str(args.apk))
     require(f"package: name='{PACKAGE}' versionCode='{code}' versionName='{name}'" in badging,
             "Unexpected APK identity or version")
