@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -90,9 +91,16 @@ def github_json(endpoint, token=None):
     headers = {"Accept": "application/vnd.github+json", "User-Agent": "LUMORA-Camera-release-check"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    with urlopen(Request(f"https://api.github.com/repos/{REPO}/{endpoint}", headers=headers),
-                 timeout=30) as response:
-        return json.load(response)
+    url = Request(f"https://api.github.com/repos/{REPO}/{endpoint}", headers=headers)
+    for attempt in range(3):
+        try:
+            with urlopen(url, timeout=30) as response:
+                return json.load(response)
+        except HTTPError as error:
+            # Shared runner IPs often exhaust the unauthenticated API budget.
+            if error.code not in (403, 429) or attempt == 2:
+                raise
+            time.sleep((attempt + 1) * 5)
 
 
 def check_draft(args):
@@ -108,7 +116,7 @@ def check_draft(args):
 def check_public(args):
     route = "releases/latest" if not args.tag else f"releases/tags/{args.tag}"
     try:
-        release = github_json(route)
+        release = github_json(route, os.environ.get("GH_TOKEN"))
     except HTTPError as error:
         if error.code == 404 and not args.tag:
             print("No public stable release yet")
