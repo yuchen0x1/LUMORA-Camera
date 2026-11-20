@@ -19,6 +19,14 @@
 - 100 次真实快门的耐力测试仍保持手动/按需执行，未加入本轮 CI：CI 模拟器上尚无已验证的通过记录，不能作为发布门禁引入。列为后续候选。
 - 当前正式提交、CI、签名发布结果以 `RELEASE_HISTORY.md` 及对应 PR/Actions 实际状态为准。
 
+### 发布流水线 incident：签名方案门禁
+
+- v2.1.2 首次打标签后，verify 全部通过，sign 阶段的资产校验以 “APK must have valid v2 and v3 signatures” 失败。
+- 本地复现（一次性测试密钥，不接触发布密钥）：build-tools 34/35/36 的 apksigner 在同时启用 v2 与 v3 时按设计只写入 v3 块，v2 验证为 false。该门禁从未被此前任何成功流水线执行过（v2.1.0 失败在更早的 sdkmanager 步骤），属首次暴露的流水线缺陷。
+- 修复：`scripts/release/android.py` 改为要求 v3 scheme 为 true（minSdk 29 下覆盖全部支持设备），不再把 v2 也强制为 true；签名工作流保持 v2/v3 双开不变。
+- 本地验证：v3 签名产物通过签名、身份与 badging 校验进入摘要阶段（本机 Python 3.8 缺 `hashlib.file_digest`，为解释器限制，CI Python 3.12 可用）；v2-only 产物被正确拒绝。修复未降低证书一致性、非 debug、版本与摘要检查。
+- v2.1.2 标签由本次会话创建、未发布任何产物；修复合并后将标签移至修复提交并重跑流水线，不触碰 v2.0.0/v2.1.0 历史标签。
+
 ### 调研取舍
 
 重新读取 GrapheneOS/Camera（MIT，巡检时近期仍有提交）与 Android Camera Samples 的目录/维护状态。只参考权限最小化、职责边界和实际设备验收的方法，没有移植代码或素材。官方样本旧 `CameraXBasic` 路径已变化，许可证 API 未返回结果，未假定其全部文件许可证。保留现有 CameraX/Compose 架构，不因调研改写相机。
