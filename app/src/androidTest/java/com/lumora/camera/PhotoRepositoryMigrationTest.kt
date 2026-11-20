@@ -77,6 +77,76 @@ class PhotoRepositoryMigrationTest {
             prefs.all.filterKeys { it.startsWith("recordsRecovery.") }.values.toSet())
     }
 
+    @Test fun partiallyUnreadableIndexIsPreservedBeforeFavoriteChanges() {
+        val damaged = """[
+            {"originalUri":"source","enhancedUri":"result","createdAt":1,"styleId":"natural","strength":"STANDARD"},
+            "{\"originalUri\":\"recoverable-source\",\"enhancedUri\":\"recoverable-result\"}",
+            null, 7, {"originalUri":"","enhancedUri":"","diagnostics":"keep this evidence"}
+        ]"""
+        prefs.edit().putString("records", damaged).commit()
+        assertEquals(listOf("result"), repo.getRecords().map { it.enhancedUri })
+        assertEquals(damaged, prefs.getString("records", null))
+        repo.setFavorite("missing", true)
+        assertFalse(prefs.all.keys.any { it.startsWith("recordsRecovery.") })
+        assertEquals(damaged, prefs.getString("records", null))
+
+        repo.setFavorite("result", true)
+        assertTrue(PhotoRepository(context, namespace).getRecords().single().favorite)
+        assertEquals(listOf(damaged), prefs.all.filterKeys { it.startsWith("recordsRecovery.") }.values.toList())
+        repo.addRecord(PhotoRecord("new-source", "new-result", "natural", 2))
+        assertEquals(2, repo.getRecords().size)
+        assertEquals(1, prefs.all.keys.count { it.startsWith("recordsRecovery.") })
+    }
+
+    @Test fun partiallyUnreadableIndexSurvivesRemovingAndUndoingTheVisibleRecord() {
+        val damaged = """[
+            {"originalUri":"source","enhancedUri":"result","createdAt":1,"styleId":"natural","strength":"STANDARD"},
+            {"futureField":"unrecognized record"}, false
+        ]"""
+        prefs.edit().putString("records", damaged).commit()
+        val record = repo.getRecords().single()
+        val removal = requireNotNull(repo.removeRecord(record))
+        assertTrue(repo.getRecords().isEmpty())
+        assertEquals(listOf(damaged), prefs.all.filterKeys { it.startsWith("recordsRecovery.") }.values.toList())
+        repo.undoRemoval(removal)
+        assertEquals(listOf(record), PhotoRepository(context, namespace).getRecords())
+        assertEquals(1, prefs.all.keys.count { it.startsWith("recordsRecovery.") })
+    }
+
+    @Test fun separatePartialCorruptionsKeepSeparateRecoverySnapshots() {
+        val damagedIndexes = listOf("[null]", "[{\"enhancedUri\":\"\",\"unknown\":123}]")
+        damagedIndexes.forEachIndexed { index, damaged ->
+            prefs.edit().putString("records", damaged).commit()
+            repo.addRecord(PhotoRecord("source", "result-$index", "natural", index.toLong()))
+            assertEquals("result-$index", repo.getRecords().single().enhancedUri)
+        }
+        assertEquals(damagedIndexes.toSet(),
+            prefs.all.filterKeys { it.startsWith("recordsRecovery.") }.values.toSet())
+    }
+
+    @Test fun concurrentMutationsPreserveTheSamePartiallyDamagedIndexOnce() {
+        val damaged = """[{"originalUri":"source","enhancedUri":"result","createdAt":1},"keep me"]"""
+        prefs.edit().putString("records", damaged).commit()
+        val other = PhotoRepository(context, namespace)
+        val start = java.util.concurrent.CountDownLatch(1)
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
+        try {
+            val favorite = pool.submit { start.await(); repo.setFavorite("result", true) }
+            val capture = pool.submit {
+                start.await()
+                other.addRecord(PhotoRecord("new-source", "new-result", "natural", 2))
+            }
+            start.countDown()
+            favorite.get(10, java.util.concurrent.TimeUnit.SECONDS)
+            capture.get(10, java.util.concurrent.TimeUnit.SECONDS)
+            assertEquals(2, repo.getRecords().size)
+            assertTrue(repo.getRecords().single { it.enhancedUri == "result" }.favorite)
+            assertEquals(listOf(damaged), prefs.all.filterKeys { it.startsWith("recordsRecovery.") }.values.toList())
+        } finally {
+            pool.shutdownNow()
+        }
+    }
+
     @Test fun observationContinuesAfterReplacingADamagedIndex() = runBlocking {
         withTimeout(10_000) {
             prefs.edit().putString("records", "{truncated").commit()

@@ -1,5 +1,30 @@
 # 竞品与技术调研
 
+## 2026-11-21（本地）/ 2026-11-20（UTC）：2.1.5 数据保全与会话隔离
+
+本轮从正式 2.1.4 主线出发，重新访问五个官方仓库、README 和下面列出的实现文件。提交时间由 GitHub commits API 核对，不把 `pushed_at` 当作代码修改时间。没有横向运行它们，也没有比较画质、延迟、内存或吞吐；性能栏只记录实现机制。未复制源码、资源、预设，未引入依赖。
+
+| 参考项目 / 许可证 | 核验源码快照（UTC） | 实际阅读的入口与可借鉴点 |
+| --- | --- | --- |
+| [Google Jetpack Camera App](https://github.com/google/jetpack-camera-app) / [Apache-2.0](https://github.com/google/jetpack-camera-app/blob/main/LICENSE) | [`64a105b`](https://github.com/google/jetpack-camera-app/commit/64a105b61ad0e97bc391c5d98109022b73feb567)，2026-11-20 | [LocalMediaRepository](https://github.com/google/jetpack-camera-app/blob/64a105b61ad0e97bc391c5d98109022b73feb567/data/media/src/main/kotlin/com/google/jetpackcamera/data/media/LocalMediaRepository.kt) 用 Mutex 协调缓存、StateFlow 和 MediaStore 查询；README 区分立即保存与缓存后复核，采用 Compose Test/UI Automator。参考共享状态边界，不为局部修复拆分整个 app。 |
+| [GrapheneOS Camera](https://github.com/GrapheneOS/Camera) / [MIT](https://github.com/GrapheneOS/Camera/blob/main/LICENSE) | [`07ec468`](https://github.com/GrapheneOS/Camera/commit/07ec468426884a92bcb52a0d346c3a9cd7886800)，2026-11-20 | [ImageSaver](https://github.com/GrapheneOS/Camera/blob/07ec468426884a92bcb52a0d346c3a9cd7886800/app/src/main/java/app/grapheneos/camera/capturer/ImageSaver.kt) 关闭 ImageProxy、区分写入失败与写完后发布失败、按 URI 决定 fsync，并有可选 EXIF 清理。学习文件所有权与提交边界，不照搬删除逻辑。 |
+| [Fossify Camera](https://github.com/FossifyOrg/Camera) / [GPL-3.0](https://github.com/FossifyOrg/Camera/blob/main/LICENSE) | [`1116293`](https://github.com/FossifyOrg/Camera/commit/11162931c2fb1a87682619816ae047911e85c758)，2026-11-18 | [ImageSaver](https://github.com/FossifyOrg/Camera/blob/11162931c2fb1a87682619816ae047911e85c758/app/src/main/kotlin/org/fossify/camera/helpers/ImageSaver.kt) 将临时 JPEG、EXIF 与目标媒体复制分步处理，最终移除 pending。README 展示快速闪光/比例/变焦控制和输出质量/路径设置。只研究设计，不复制 GPL 实现进 MIT 工程。 |
+| [darktable](https://github.com/darktable-org/darktable) / [GPL-3.0](https://github.com/darktable-org/darktable/blob/master/LICENSE) | [`b2ebaf1`](https://github.com/darktable-org/darktable/commit/b2ebaf11bf7962bc75653bf2df43818fe4c507f3)，2026-11-20 | [history.c](https://github.com/darktable-org/darktable/blob/b2ebaf11bf7962bc75653bf2df43818fe4c507f3/src/common/history.c) 有编辑历史快照与撤销组；README 明确数据库升级前备份、旧版不可读新结构以及测试/稳定配置隔离。借鉴有损重写前保全原文，不引入桌面显影链。 |
+| [Aves](https://github.com/deckerst/aves) / [BSD-3-Clause](https://github.com/deckerst/aves/blob/develop/LICENSE) | [`2184b35`](https://github.com/deckerst/aves/commit/2184b35b116a9b82bfacf91475b209dbc3e814dc)，2026-11-19 | [MediaStoreChangeStreamHandler](https://github.com/deckerst/aves/blob/2184b35b116a9b82bfacf91475b209dbc3e814dc/android/app/src/main/kotlin/deckers/thibault/aves/channel/streams/platformtodart/MediaStoreChangeStreamHandler.kt) 监听并注销图片/视频变化，注明即时查询可能暂时陈旧，处理注册时权限失败；README 介绍 Flutter 图库、元数据与导航搜索。学习观察器生命周期，不增加全库读取权限。 |
+
+### 六维比较及本轮取舍
+
+| 维度 | LUMORA 2.1.4 实际状态 | 参考发现 | 本轮升级方向 |
+| --- | --- | --- | --- |
+| 功能完整度 | JPEG、20 种预设、非破坏性版本、收藏/撤销和安全更新；没有主线 DNG 输出 | JCA 有照片/视频与复核流程，Aves 更侧重多格式图库 | 优先修复现有数据与更新的边界，不为数量新增拍摄模式 |
+| UI/UX | Compose 取景器、图库、设置与全局更新错误提示 | Fossify 直接提供常用控制，Aves 强调导航 | 保留既有界面；本轮不宣称视觉改版 |
+| 性能 | 行处理、有界预览与串行全尺寸导出，JSON 索引每次写入序列化 | JCA 缓存同步，GrapheneOS 后台写入，darktable 支持可选 OpenCL | 索引修改读取同一快照，避免为恢复判断再次解析；不宣称测得提速 |
+| 架构 | 单 app 模块，共享偏好锁；更新客户端的临时/正式文件路径全局固定 | JCA 区分 UI/数据层，ImageSaver 区分暂存/完成 | 更新文件按客户端会话拥有，清理只作用于自己 |
+| 安全/可靠性 | 整体坏 JSON 已备份；部分不可读条目重写未备份；有摘要和同证书校验 | darktable 先备份再迁移，GrapheneOS 区分写入和发布失败 | 原始完整索引与新索引在同一偏好编辑提交，所有既有验签保留 |
+| 扩展性 | SharedPreferences 兼容旧记录，无云端/账号数据库 | darktable 的显式历史，Aves 原生平台观察边界 | 不做破坏性迁移，不把未知条目猜成有效作品；显式恢复 UI 留作独立设计 |
+
+活动、许可证与功能均仅限上述仓库快照；研究不等于依赖安全审计，也不代表取得了第三方的性能或稳定性验收结果。
+
 ## 2026-11-21：2.1.4 第二轮——更新检查恢复
 
 本轮处理更新检查、下载和安装的失败恢复，不新增拍摄、图库或显影功能。已确认检查失败会把自动检查推迟一天或一周，操作错误又只在设置页可见。实施边界如下：

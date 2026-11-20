@@ -33,9 +33,7 @@ internal class AndroidUpdater(private val context: Context) : UpdateClient {
     private val packageName = context.packageName
     private val installed by lazy { installedPackage() }
     override val versionName: String get() = installed.versionName.orEmpty()
-    private val updates get() = File(context.cacheDir, "verified-update")
-    private val apk get() = File(updates, "lumora.apk")
-    private val partial get() = File(context.cacheDir, "lumora-update.part.apk")
+    private val files = UpdateCacheFiles(context.cacheDir)
 
     override suspend fun check(): UpdateOffer? = withContext(Dispatchers.IO) {
         val response = receive(URI(RELEASE_API), "application/vnd.github+json", redirects = false) { stream ->
@@ -53,24 +51,18 @@ internal class AndroidUpdater(private val context: Context) : UpdateClient {
         else -> null
     }
 
-    override suspend fun download(offer: UpdateOffer, progress: (Long) -> Unit) = withContext(Dispatchers.IO) {
-        incompatibility(offer)?.let { throw UpdateFailure(it) }
-        if (!updates.isDirectory && !updates.mkdirs()) throw UpdateFailure("无法创建下载目录")
-        if (apk.exists() && !apk.delete()) throw UpdateFailure("无法清理上次的更新文件")
-        if (updates.usableSpace < offer.release.apk.size + 16L * 1024 * 1024) {
-            throw UpdateFailure("可用空间不足，清理空间后请重试")
+    override suspend fun download(offer: UpdateOffer, progress: (Long) -> Unit) {
+        withContext(Dispatchers.IO) {
+            incompatibility(offer)?.let { throw UpdateFailure(it) }
         }
-        // A partial download stays outside the FileProvider path.
-        try {
+        files.writeVerified(offer.release.apk.size) { partial ->
             partial.outputStream().buffered().use { transfer(offer.release.apk, it, progress) }
             verifyArchive(partial, offer)
-            if (!partial.renameTo(apk)) throw UpdateFailure("无法保存已校验的安装包")
-        } finally {
-            partial.delete()
         }
     }
 
     override suspend fun installIntent(offer: UpdateOffer): Intent = withContext(Dispatchers.IO) {
+        val apk = files.verifiedFile()
         verifyArchive(apk, offer)
         val uri = FileProvider.getUriForFile(context, "$packageName.updates", apk)
         Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
@@ -78,10 +70,7 @@ internal class AndroidUpdater(private val context: Context) : UpdateClient {
             .putExtra(Intent.EXTRA_RETURN_RESULT, true)
     }
 
-    override fun clearDownloaded() {
-        apk.delete()
-        partial.delete()
-    }
+    override fun clearDownloaded() = files.clear()
 
     internal fun verifyArchive(file: File, offer: UpdateOffer) {
         if (!file.isFile || file.length() != offer.release.apk.size) throw UpdateFailure("安装包不完整，请重新下载")

@@ -35,7 +35,7 @@ LUMORA 的核心是按镜头能力取景和拍摄、保留来源 JPEG、在设�
 
 ## Android 版本与分发
 
-- 当前源码版本为 2.1.4 / versionCode 8 / minSdk 29；公开版本和安装资产以 [GitHub Releases](https://github.com/yuchen0x1/LUMORA-Camera/releases) 为准。保留 `v2.1.0`、2.1.1 与历史调试签名测试版的记录。
+- 当前源码版本为 2.1.5 / versionCode 9 / minSdk 29；公开版本和安装资产以 [GitHub Releases](https://github.com/yuchen0x1/LUMORA-Camera/releases) 为准。保留 `v2.1.0`、2.1.1 与历史调试签名测试版的记录。
 - `version.properties` 是版本来源，标签须与 `versionName` 一致；新稳定版的版本号、版本码须递增，并沿用已公开稳定版的签名证书。
 - 标签触发的发布流程先验证源码与 API 29/35 测试，再通过受保护环境签名，校验 APK 身份、版本、最低 API、v3 签名与证书，运行签名包安装启动检查。草稿资产验证通过后才公开 APK、`android-update.json` 与 `SHA256SUMS.txt`，并复核公开下载摘要。
 - 应用内更新仅接受 GitHub 稳定版并在安装前核验已安装包与候选包证书。公开调试测试版无法覆盖安装不同签名的正式版；勿为升级直接卸载，以免丢失本地作品索引和设置。

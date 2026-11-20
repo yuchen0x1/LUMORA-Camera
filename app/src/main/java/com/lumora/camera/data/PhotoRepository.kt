@@ -50,15 +50,17 @@ class PhotoRepository(context: Context, namespace: String = "lumora_preferences"
         val pendingUndo = WeakHashMap<RemovedPhoto, Unit>()
     }
 
-    private fun recordArray(): JSONArray? = try {
-        JSONArray(prefs.getString("records", "[]") ?: "[]")
+    private fun recordArray(raw: String = prefs.getString("records", "[]") ?: "[]"): JSONArray? = try {
+        JSONArray(raw)
     } catch (_: JSONException) {
         null
     }
 
-    fun getRecords(): List<PhotoRecord> {
-        // Reading a damaged index must neither crash the UI nor change the stored data.
-        val array = recordArray() ?: return emptyList()
+    // Reading a damaged index must neither crash the UI nor change the stored data.
+    fun getRecords(): List<PhotoRecord> = readRecords(recordArray())
+
+    private fun readRecords(array: JSONArray?): List<PhotoRecord> {
+        if (array == null) return emptyList()
         return buildList {
             for (index in 0 until array.length()) {
                 val item = array.optJSONObject(index) ?: continue
@@ -143,7 +145,9 @@ class PhotoRepository(context: Context, namespace: String = "lumora_preferences"
     }
 
     private fun updateRecords(transform: (List<PhotoRecord>) -> List<PhotoRecord>) = synchronized(prefs) {
-        val current = getRecords()
+        val raw = prefs.getString("records", "[]") ?: "[]"
+        val original = recordArray(raw)
+        val current = readRecords(original)
         val updated = transform(current)
         if (updated == current) return@synchronized
         val array = JSONArray()
@@ -167,10 +171,11 @@ class PhotoRepository(context: Context, namespace: String = "lumora_preferences"
             })
         }
         val editor = prefs.edit().putInt("recordSchema", 2).putString("records", array.toString())
-        if (recordArray() == null) {
-            // Keep each damaged index in the same atomic edit as its replacement. Never
-            // overwrite earlier recovery data or delete any of the underlying media.
-            editor.putString("recordsRecovery.${UUID.randomUUID()}", prefs.getString("records", null))
+        if (original == null || current.size != original.length()) {
+            // Skipped entries are also damage, even when the outer array is valid JSON.
+            // Preserve the exact snapshot in the same atomic edit as its replacement;
+            // never overwrite earlier recovery data or delete underlying media.
+            editor.putString("recordsRecovery.${UUID.randomUUID()}", raw)
         }
         editor.apply()
     }

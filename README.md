@@ -2,7 +2,7 @@
 
 LUMORA 是一款面向 Android 10 及以上系统的本地摄影应用。可以从取景器拍摄 JPEG，在同一张原图上尝试胶片风格与编辑参数，并在作品库中比较不同版本。
 
-当前源码版本为 **2.1.4（versionCode 8）**。相机权限仅用于取景和拍摄；不授权也能使用作品库和设置。正式下载以 [GitHub Releases](https://github.com/yuchen0x1/LUMORA-Camera/releases) 中通过签名发布流水线的资产为准。`v2.1.0` 是未发布候选标签，历史 [v2.0.0 测试版](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.0.0) 使用调试证书，均不能直接覆盖为不同签名的正式包；不要为升级自动卸载旧应用。版本变化见[更新记录](CHANGELOG.md)，实际发布状态见[发布历史](RELEASE_HISTORY.md)。
+当前源码版本为 **2.1.5（versionCode 9）**。相机权限仅用于取景和拍摄；不授权也能使用作品库和设置。正式下载以 [GitHub Releases](https://github.com/yuchen0x1/LUMORA-Camera/releases) 中通过签名发布流水线的资产为准。`v2.1.0` 是未发布候选标签，历史 [v2.0.0 测试版](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.0.0) 使用调试证书，均不能直接覆盖为不同签名的正式包；不要为升级自动卸载旧应用。版本变化见[更新记录](CHANGELOG.md)，实际发布状态见[发布历史](RELEASE_HISTORY.md)。
 
 ![API 35 模拟器上的取景界面](docs/screenshots/v2-camera.png)
 
@@ -16,9 +16,13 @@ LUMORA 是一款面向 Android 10 及以上系统的本地摄影应用。可以�
 4. 打开胶片风格面板选择预设、强度和收藏。拍下第一张照片或从作品库指定样片后，可在同一张照片上比较预设。取景辅助包含网格、水平仪、直方图、明暗警告和峰值提示。
 5. 原图与成片分别存入系统媒体库的 `Pictures/LUMORA`。在作品中对比原图、导入照片、调整参数并保存新版本。可撤销编辑步骤，已经保存的上一版本仍可打开。从作品库移除记录会保留媒体文件。
 
+### 作品索引保护
+
+读取时遇到不可读的作品条目不会修改原始索引。下次实际新增、收藏或移除作品而需要重写时，应用会先在同一份私有偏好更新中保留完整原文恢复快照，包括合法 JSON 内被跳过的未知条目；已有恢复快照不覆盖，媒体文件不删除。这是恢复线索保全，不是自动修复，当前没有应用内恢复入口。
+
 ## 应用更新
 
-在设置中手动检查 GitHub 正式版，或选择每天/每周自动检查。只有成功检查才记入周期；网络失败后在下次回到前台时按 15 分钟退避重试，手动检查不受退避限制。检查、下载或安装失败会显示可关闭的全局提示，可重新检查后下载。下载包仍须通过摘要、包名、递增版本码和同证书校验，由 Android 系统确认安装；不会静默安装或自动卸载旧版。
+在设置中手动检查 GitHub 正式版，或选择每天/每周自动检查。只有成功检查才记入周期；网络失败后在下次回到前台时按 15 分钟退避重试，手动检查不受退避限制。检查、下载或安装失败会显示可关闭的全局提示，可重新检查后下载。每次下载拥有独立的临时/已校验文件，其他应用实例的下载或清理不会删除它。下载包仍须通过摘要、包名、递增版本码和同证书校验，由 Android 系统确认安装；不会静默安装或自动卸载旧版。
 
 ## 从 V1 升级
 
@@ -46,6 +50,6 @@ Debug 安装包位于 `app/build/outputs/apk/debug/app-debug.apk`；本地 Relea
 
 ## 验证资料
 
-[验收与性能报告](docs/TEST_REPORT.md) · [仪器测试明细](docs/verification/device-results.json) · [实现与数据流](docs/ARCHITECTURE.md) · [版本记录](CHANGELOG.md)
+[本轮交付报告](docs/EVOLUTION-2.1.5.md) · [验收与性能报告](docs/TEST_REPORT.md) · [历史仪器测试明细](docs/verification/device-results.json) · [实现与数据流](docs/ARCHITECTURE.md) · [版本记录](CHANGELOG.md)
 
 成像诊断可在作品中查看，也可通过 `adb logcat -s LumoraCapture` 读取。当前导出格式为 JPEG。模拟器验证与实体设备验收范围详见报告。
