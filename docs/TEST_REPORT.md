@@ -15,7 +15,9 @@
 | API 35 平板 | 18/18，22.683 秒 | 1600×2560 / 280 dpi；安全区、无相机权限导航、更新恢复；已核实恢复原 1080×2400 / 420 dpi |
 | 启动与运行 | API 29 冷启动 Status: ok，versionName 2.1.5 / code 9 | 取景已进入可拍状态；[真实截图](screenshots/v2.1.5-camera-api29.png)；两台设备本轮 crash buffer 未见 app 崩溃，不是长稳证明 |
 | 依赖巡检 | 开放 Dependabot 告警 0 | 当前快照不等于全部库绝对安全 |
-| 正式包/公开资产/保留数据升级 | 尚待发布步骤核验 | 未签名中间包不得作为正式安装资产 |
+| 远程源码 CI | 构建/Lint、API 29/35 与汇总门禁全部 success | [主线 run 44837860635](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44837860635)，headSha 为源码提交 592b7694abc265ad6e74c51587540f670fe207b3 |
+| 远程依赖检查 | success | [Dependency security run 44837860645](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44837860645)，同一源码提交 |
+| 正式包/公开资产/保留数据升级 | 未执行，最终发布确认尚无回答 | 未创建 v2.1.5 标签或触发签名发布；未签名中间包不得作为正式安装资产 |
 
 新增索引回归覆盖完整原文、只读/无变化不写、收藏、移除撤销、重复损坏、跨仓库并发且只备份一次。文件用例调用生产 `UpdateCacheFiles`、真实内部存储及 FileProvider，覆盖跨客户端 Ready 文件与已发 URI、部分文件不可暴露、提升交错、重复下载、失败/取消/迟到交付清理、目标碰撞不覆盖、孤儿文件不认领/不清扫。测试 fixture 是文本，不是已签名 APK；未将它们当作真实联网下载、密码学负例或系统安装器交互验收。
 

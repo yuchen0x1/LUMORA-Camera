@@ -11,6 +11,14 @@
 | **v2.1.3 / code 7** | **正式发布成功（2026-11-21）** | [稳定版下载](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.3) · [发布流水线](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44799665199) |
 | **v2.1.4 / code 8** | **正式发布成功（2026-11-21）** | [稳定版下载](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.4) · [发布流水线](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44830235233) |
 
+## 2.1.5 / code 9 候选（源码已入 main，未发布）
+
+- 源码提交 [`592b7694abc265ad6e74c51587540f670fe207b3`](https://github.com/yuchen0x1/LUMORA-Camera/commit/592b7694abc265ad6e74c51587540f670fe207b3) 已快进进入并实际推送 main；`git ls-remote` 返回同一 SHA，没有强推。
+- [主线 CI](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44837860635) 的构建/Lint、API 29/35 与 Android verification 全部 success；[Dependency security](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44837860645) success。
+- 已显示精确目标、版本、标题和正式稳定发布摘要，请求最终发布确认，尚未收到回答；不视作批准或拒绝。**没有创建 v2.1.5 标签或 Release，没有触发签名发布，也没有正式 APK 可分发。** 当前公开稳定版仍为 v2.1.4。
+- 收到针对源码提交的确认后才能新建标签触发既有受保护签名流水线；后续还必须验签、核对公开摘要并验证保留数据覆盖升级。不得重复打旧标签、移动已发布标签或上传本地未签名中间包。
+- 真实本地测试、研究、已知问题及交付边界见 [2.1.5 报告](docs/EVOLUTION-2.1.5.md)。
+
 ## v2.1.4 发布证据
 
 - 发布源码提交为 `cee74b11903eae0d8da63562e7898c14d3896925`，先快进进入并推送远程 `main`，再创建新注解标签 `v2.1.4`；标签对象为 `cf672109173daf428023b2302c0bf409a094388a`，未移动、复用旧标签。

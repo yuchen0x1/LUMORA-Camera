@@ -2,7 +2,7 @@
 
 LUMORA 是一款面向 Android 10 及以上系统的本地摄影应用。可以从取景器拍摄 JPEG，在同一张原图上尝试胶片风格与编辑参数，并在作品库中比较不同版本。
 
-当前源码版本为 **2.1.5（versionCode 9）**。相机权限仅用于取景和拍摄；不授权也能使用作品库和设置。正式下载以 [GitHub Releases](https://github.com/yuchen0x1/LUMORA-Camera/releases) 中通过签名发布流水线的资产为准。`v2.1.0` 是未发布候选标签，历史 [v2.0.0 测试版](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.0.0) 使用调试证书，均不能直接覆盖为不同签名的正式包；不要为升级自动卸载旧应用。版本变化见[更新记录](CHANGELOG.md)，实际发布状态见[发布历史](RELEASE_HISTORY.md)。
+当前源码版本为 **2.1.5（versionCode 9）候选**，已进入主线并通过 CI，尚未打标签或正式发布；当前公开稳定版仍为 **2.1.4**。相机权限仅用于取景和拍摄；不授权也能使用作品库和设置。正式下载以 [GitHub Releases](https://github.com/yuchen0x1/LUMORA-Camera/releases) 中通过签名发布流水线的资产为准。`v2.1.0` 是未发布候选标签，历史 [v2.0.0 测试版](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.0.0) 使用调试证书，均不能直接覆盖为不同签名的正式包；不要为升级自动卸载旧应用。版本变化见[更新记录](CHANGELOG.md)，实际发布状态见[发布历史](RELEASE_HISTORY.md)。
 
 ![API 35 模拟器上的取景界面](docs/screenshots/v2-camera.png)
 
