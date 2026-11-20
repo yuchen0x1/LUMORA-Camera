@@ -1,4 +1,13 @@
-# LUMORA Camera 2.0.0 验收报告
+# LUMORA Camera 验收报告
+
+## 2.1.3：相机权限与作品库导航（2026-11-21）
+
+- 在独立 ASCII 路径工作树构建：Debug、AndroidTest 与未签名 Release 全部成功；JVM 单测 17 项通过。Debug／Release Lint 各 0 错误、31 警告。
+- Android 10（API 29）和 Android 15（API 35）安装候选 Debug APK，按现有 CI 常规集各运行 35 项，无失败。API 35 在 1600 × 2560、280 dpi 下另外运行安全区及权限导航共 7 项，无失败。
+- 新用例覆盖未授权时无快门、作品库和编辑入口可用、导入按钮可用、设置可访问，以及永久拒绝时显示系统设置入口。API 35 实际撤销相机权限后冷启动成功，保留了[真实界面截图](screenshots/v2-camera-permission.png)。
+- 未在 2.1.3 重跑独立的 100 张耐久套件或实体厂商扩展测试；未主张渲染性能变化。正式签名、覆盖安装与公开下载不能以本地未签名 Release 的构建替代。
+
+## 2.0.0：历史验收
 
 2026-11-18，经本机 Windows、JDK 21、Gradle 9.1.0、AGP 9.0.1 构建。应用包名为 `com.lumora.camera`，版本码 2，最低 API 29，目标 API 35。
 

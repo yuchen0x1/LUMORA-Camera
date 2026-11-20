@@ -2,7 +2,7 @@
 
 ## 从快门到文件
 
-1. MainActivity 管理相机权限、页面导航、音量键与系统栏。应用采用深色表面和浅色系统图标。取景器及普通页面分别消费所需的系统边距。系统栏颜色独立于系统明暗主题，以维持相机暗色界面的可读性。
+1. MainActivity 管理相机授权、音量键与系统栏；LumoraNavigation 只在进入取景页且已授权时组合 CameraScreen。拒绝或撤销相机权限不阻塞作品库、系统照片选择器或设置。应用采用深色表面和浅色系统图标，取景器及普通页面分别消费所需的系统边距。
 2. CameraController 根据 ProcessCameraProvider 枚举的实际镜头、Camera2 characteristics 和 ExtensionsManager 生成能力快照。取景与静态捕获分别配置尺寸选择策略；扩展或首选尺寸组合绑定失败时会回退。CameraFocus 跟踪点按对焦和拍摄前测光结果，并设有超时。
 3. CameraX ImageCapture 将传感器经 ISP 编码的原始 JPEG 写入 MediaStore。CameraOutput 登记来源 URI，并在后台启动后处理。定时、连拍、音量键共用屏幕快门的捕获路径。
 4. PhotoEnhancementEngine 测量输入文件并检查内存预算，将全尺寸图像解码为可修改的 sRGB 位图。FilmColorEngine 根据图像样本估计亮度与色偏，按行更新像素。RGB 曲线和分色 HSL 形成 17³ 查找表，使用四面体插值；暗部样本和邻域边缘参与降噪与细节处理。行缓冲由 Java 堆分配，像素缓冲占用原生内存。导出分别检查 Java 堆余量和系统可用内存，大图任务串行运行，内存不足时保留来源。

@@ -15,6 +15,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material3.*
@@ -24,6 +26,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -31,6 +34,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lumora.camera.camera.DeviceCapabilities
+import com.lumora.camera.data.FilmPreset
 import com.lumora.camera.data.FilmPresets
 import com.lumora.camera.data.PhotoRepository
 import com.lumora.camera.update.UpdateDialog
@@ -95,8 +99,6 @@ class MainActivity : ComponentActivity() {
         val presets = remember { FilmPresets.load(applicationContext) }
         val device: CameraDeviceState = viewModel()
         val updates: UpdateViewModel = viewModel()
-        val savedScreens = rememberSaveableStateHolder()
-        var screen by rememberSaveable { mutableStateOf(AppScreen.CAMERA) }
         var granted by remember { mutableStateOf(cameraAllowed()) }
         var asked by rememberSaveable { mutableStateOf(false) }
         val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -107,45 +109,70 @@ class MainActivity : ComponentActivity() {
             val observer = LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_RESUME) {
                     granted = cameraAllowed()
-                    if (granted) updates.check(manual = false)
+                    updates.check(manual = false)
                 }
             }
             lifecycle.addObserver(observer)
             onDispose { lifecycle.removeObserver(observer) }
         }
-        LaunchedEffect(Unit) {
-            if (!granted && !asked) permission.launch(Manifest.permission.CAMERA)
-        }
-        BackHandler(enabled = screen != AppScreen.CAMERA) { screen = AppScreen.CAMERA }
-        Surface(Modifier.fillMaxSize()) {
-            if (granted) {
-                when (screen) {
-                    AppScreen.CAMERA -> savedScreens.SaveableStateProvider("viewfinder") {
-                        CameraScreen(repository, presets,
-                        onOpenGallery = { screen = AppScreen.GALLERY },
-                        onOpenSettings = { screen = AppScreen.SETTINGS },
-                        onCapabilities = { device.lastLens = it })
-                    }
-                    AppScreen.GALLERY -> GalleryScreen(repository) { screen = AppScreen.CAMERA }
-                    AppScreen.SETTINGS -> SettingsScreen(repository, device.lastLens, updates) { screen = AppScreen.CAMERA }
-                }
+        val openSettings = !granted && asked && !shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)
+        LumoraNavigation(repository, presets, device, updates, granted, openSettings) {
+            if (openSettings) {
+                startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
             } else {
-                Column(Modifier.safeDrawingPadding().padding(28.dp), Arrangement.Center, Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Camera, null, Modifier.size(56.dp), tint = Accent)
-                    Spacer(Modifier.height(16.dp))
-                    Text("LUMORA Camera", style = MaterialTheme.typography.headlineMedium)
-                    Text("允许使用相机后即可取景和拍摄。", color = Muted)
-                    Spacer(Modifier.height(20.dp))
-                    val openSettings = asked && !shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)
-                    Button(onClick = {
-                        if (openSettings) startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
-                        else permission.launch(Manifest.permission.CAMERA)
-                    }) { Text(if (openSettings) "前往系统设置" else "开启相机") }
-                }
+                permission.launch(Manifest.permission.CAMERA)
             }
-            UpdateDialog(updates)
         }
     }
 }
 
 private enum class AppScreen { CAMERA, GALLERY, SETTINGS }
+
+@Composable
+internal fun LumoraNavigation(
+    repository: PhotoRepository, presets: List<FilmPreset>, device: CameraDeviceState, updates: UpdateViewModel,
+    cameraGranted: Boolean, openSystemSettings: Boolean, onEnableCamera: () -> Unit
+) {
+    val savedScreens = rememberSaveableStateHolder()
+    var screen by rememberSaveable { mutableStateOf(AppScreen.CAMERA) }
+    val backToCamera = { screen = AppScreen.CAMERA }
+    BackHandler(enabled = screen != AppScreen.CAMERA, onBack = backToCamera)
+    Surface(Modifier.fillMaxSize()) {
+        when (screen) {
+            AppScreen.CAMERA -> {
+                val openGallery = { screen = AppScreen.GALLERY }
+                val openSettings = { screen = AppScreen.SETTINGS }
+                if (cameraGranted) {
+                    savedScreens.SaveableStateProvider("viewfinder") {
+                        CameraScreen(repository, presets, openGallery, openSettings) { device.lastLens = it }
+                    }
+                } else {
+                    CameraPermissionScreen(openSystemSettings, onEnableCamera, openGallery, openSettings)
+                }
+            }
+            AppScreen.GALLERY -> GalleryScreen(repository, backToCamera)
+            AppScreen.SETTINGS -> SettingsScreen(repository, device.lastLens, updates, backToCamera)
+        }
+        UpdateDialog(updates)
+    }
+}
+
+@Composable
+private fun CameraPermissionScreen(
+    openSystemSettings: Boolean, onEnable: () -> Unit, onOpenGallery: () -> Unit, onOpenSettings: () -> Unit
+) {
+    Column(
+        Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(28.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(Icons.Default.Camera, null, Modifier.size(56.dp), tint = Accent)
+        Spacer(Modifier.height(16.dp))
+        Text("LUMORA Camera", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+        Text("相机权限仅用于取景和拍摄。不授权也可以浏览作品和导入照片。", color = Muted, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(20.dp))
+        Button(onClick = onEnable) { Text(if (openSystemSettings) "前往系统设置" else "开启相机") }
+        TextButton(onClick = onOpenGallery) { Text("打开作品库") }
+        TextButton(onClick = onOpenSettings) { Text("打开应用设置") }
+    }
+}

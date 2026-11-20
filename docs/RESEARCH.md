@@ -1,5 +1,22 @@
 # 竞品与技术调研
 
+## 2026-11-21：拍摄、权限与作品库对照
+
+用仓库公开 API、源码和官方文档复核以下项目。没有用同一台设备、镜头、分辨率做横向基准，因而不对速度、功耗或画质排序；本轮未导入任何第三方源码、预设、着色器或依赖。
+
+| 项目 | 已核实许可证／活动 | 与 LUMORA 的差异及取舍 |
+| --- | --- | --- |
+| [Open Camera](https://sourceforge.net/p/opencamera/code/ci/master/tree/) | [GPL-3.0-or-later](https://opencamera.sourceforge.io/)；[1.56.2](https://opencamera.sourceforge.io/history.html) 发布于 2026-05-27 | [官方帮助](https://opencamera.sourceforge.io/help.html)覆盖 RAW + JPEG、包围曝光和取景直方图，区分取景测量与实际成片；LUMORA 正式主线仍只输出 JPEG，先建立构图与实际输出的同场景测试。 |
+| [PhotonCamera](https://github.com/eszdman/PhotonCamera) | GPL-3.0-or-later；`dev` 于 2026-10-06 更新 | Camera2 RAW 连拍和 OpenGL 对齐、合并、显影分阶段处理；LUMORA 的单帧 CPU 管线更简单，先将原片采集与有界后处理队列解耦，并测量真实快门间隔。 |
+| [MotionCam 历史 Android 源码](https://github.com/TadiT7/motioncam) | 归档镜像的 `main` 和 `mm/fast_fuse` 有 GPL v3 根许可证；`main` 最后提交于 2022-03-22 | NDK Camera2、C++／Halide RAW 缓冲和多帧处理只作历史参考，不等同于当前 MotionCam Pro 开源。多帧 RAW 不进入 LUMORA 默认 JPEG 路径。 |
+| [Android Camera Samples](https://github.com/android/camera-samples) | 核验的 CameraX／Camera2 控制器有 Apache-2.0 文件标头，不推定全仓同一许可证；`main` 于 2026-11-03 更新 | [CameraX RAW 样例](https://github.com/android/camera-samples/blob/main/samples/camerax-rawcapture/src/main/java/com/android/camerax/rawcapture/CameraXRawCaptureController.kt)按回调格式区分 RAW／JPEG；后续独立验收按镜头绑定及部分成功处理，不将硬件声明当作文件真实保存。 |
+| [Aves](https://github.com/deckerst/aves) | BSD-3-Clause；`develop` 于 2026-11-19 更新 | Flutter 作品库和 Android 原生媒体观察器、不依赖拍摄链，按请求尺寸取缩略图。LUMORA 优先保留系统选择器的逐张访问，不为修复图库引入全盘媒体读取。 |
+| [GrapheneOS Camera](https://github.com/GrapheneOS/Camera) | MIT；`main` 于 2026-11-20 更新 | CameraX 采集与有限权限、可选 EXIF 清理、写完再发布媒体；本轮采用最小权限原则，独立实现相机授权和图库／设置解耦。分享原图的元数据提示留作后续。 |
+
+安装与工程取舍：正式继续沿用 GitHub 签名通用 APK 与双 API CI；没有替换 CameraX、引入 NDK/GPU 链或云端索引。新增功能需区分设备声明、真实绑定和实测文件；图库需区分 URI 权限失效、文件移除和仍可恢复的记录。
+
+## 2026-11-18：历史基线
+
 2026-11-18 的 GitHub 快照。通过 GitHub GraphQL 读取仓库描述、默认分支目录及提交历史、公开发布、Issues 和 README（存在 Markdown README 时）。链接直达项目和最近活动。30/90/180 是各窗口内的默认分支提交次数，Star / Fork 为快照。最新一列优先采用 GitHub 稳定 Release，其次取可见的最近 Release。未识别表示 GitHub 没有给出明确 SPDX，需要逐文件核查。项目代码、LUT 和 UI 素材均未引入。
 
 | 项目与类别 | 平台 / 语言 | SPDX | Star / Fork | 最近提交 · 30/90/180 天 | Release | 源码入口与参考 |
