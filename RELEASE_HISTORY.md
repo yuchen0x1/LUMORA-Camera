@@ -8,6 +8,14 @@
 | v2.1.0 | 历史标签；正式发布失败 | Actions 的 Publish signed Android APK 未成功；不移动标签、不创建空 Release。 |
 | 2.1.1 / code 4 | 元数据已随 PR #6 合并进 main，未打标签、未发布 | 纯 version.properties/CHANGELOG/README/PLATFORMS 准备，被 2.1.2 取代。 |
 | **v2.1.2 / code 6** | **正式发布成功（2026-11-21）** | 见下方“v2.1.2 发布证据”。 |
+| **v2.1.3 / code 7** | **正式发布成功（2026-11-21）** | [稳定版下载](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.3) · [发布流水线](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44799665199) |
+
+## v2.1.3 发布证据
+
+- `v2.1.3` 指向主线提交 `5ad9b46d01cd7f4c61883d735c2de1c8c02fe5ac`，未复用或移动旧标签。GitHub 确认为公开稳定版（非草稿、非预览），发布时间为 2026-11-20T19:19:08Z。
+- 构建与 Lint、API 29／35 测试、正式签名、签名 APK 安装启动和公开资产校验全部通过。[主线 CI](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44798655565)与发布 run 各自验证了该提交。
+- `LUMORA-Camera-2.1.3-Android-universal.apk` 大小为 50,197,690 字节，SHA-256 为 `93b2223637d282dcd6035cfae0727b079ba61ec8af46d6afa5b2f1c79cd53b50`。公开下载的 APK 和 `android-update.json` 匹配 `SHA256SUMS.txt`；apksigner 验证 v3、单一签名证书，指纹与 2.1.2 及更新元数据一致。包名为 `com.lumora.camera`，versionCode 7，minSdk 29，未标为 debuggable。
+- 独立 Android 10 模拟器实测从正式 2.1.2 覆盖安装并启动 2.1.3，关闭的音量键快门偏好得到保留；未用历史调试包做覆盖升级。
 
 ## v2.1.2 发布证据
 
