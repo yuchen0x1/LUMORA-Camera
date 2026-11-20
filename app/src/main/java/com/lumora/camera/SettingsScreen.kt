@@ -89,7 +89,6 @@ internal fun SettingsScreen(
             TextButton(onClick = { updates.check(manual = true) }, enabled = updates.state != UpdateState.Checking) {
                 Text(if (updates.state == UpdateState.Checking) "正在检查…" else "检查更新")
             }
-            (updates.state as? UpdateState.Notice)?.let { Text(it.text, color = Muted) }
             Spacer(Modifier.height(24.dp))
         }
     }

@@ -84,6 +84,17 @@ internal fun UpdateDialog(model: UpdateViewModel) {
             confirmButton = { Button(onClick = { startInstall(state.offer) }) { Text("安装更新") } },
             dismissButton = { TextButton(onClick = { model.later(state.offer) }) { Text("稍后") } }
         )
+        is UpdateState.Notice -> AlertDialog(
+            onDismissRequest = model::clearNotice,
+            title = { Text("应用更新") },
+            text = { Text(state.text) },
+            confirmButton = {
+                TextButton(onClick = model::clearNotice) { Text("知道了") }
+            },
+            dismissButton = {
+                if (state.retryable) TextButton(onClick = { model.check(manual = true) }) { Text("重新检查") }
+            }
+        )
         else -> Unit
     }
 }

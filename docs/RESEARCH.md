@@ -1,5 +1,37 @@
 # 竞品与技术调研
 
+## 2026-11-21：2.1.4 第二轮——更新检查恢复
+
+本轮处理更新检查、下载和安装的失败恢复，不新增拍摄、图库或显影功能。已确认检查失败会把自动检查推迟一天或一周，操作错误又只在设置页可见。实施边界如下：
+
+- 成功检查后才记入每日／每周周期，检查失败使用独立时间戳和 15 分钟退避；下次前台触发时检查是否到期，手动检查不受退避限制。不是后台定时任务，也未新增 HTTP 自动重放或 `Retry-After` 解析。
+- 操作错误改为全局可见、可关闭并可重新检查的提示；关闭提示回到空闲，不改写检查时间戳。安装校验期间选择“稍后”会取消尚未启动的安装任务。
+- 补充版本／资产／精确 URL／大小／SHA-256／HTTPS 重定向负向协议测试，以及检查周期、取消、全局提示和手动恢复的状态回归。未声称性能改善。
+
+### 第二轮核验的五个仓库
+
+| 项目 | 许可证与活动证据 | 已核实的源码／文档入口与实际发现 |
+| --- | --- | --- |
+| [Google Jetpack Camera App](https://github.com/google/jetpack-camera-app) | [Apache-2.0](https://github.com/google/jetpack-camera-app/blob/main/LICENSE)；默认分支于 2026-11-20 更新（[提交](https://github.com/google/jetpack-camera-app/commit/5e5c4b93075364f8976f6602c355d5b2758fce09)） | [CameraSession](https://github.com/google/jetpack-camera-app/blob/main/core/camera/src/main/java/com/google/jetpackcamera/core/camera/CameraSession.kt) 使用生命周期协程和 `unbindAll`；[LocalMediaRepository](https://github.com/google/jetpack-camera-app/blob/main/data/media/src/main/kotlin/com/google/jetpackcamera/data/media/LocalMediaRepository.kt) 用 `Mutex`、`StateFlow`、MediaStore 变更和缩略图缓存，查询失败可保留状态并等待刷新；[README 的保存／复核](https://github.com/google/jetpack-camera-app#media-saving-and-review) 有即时保存与 cache-and-review 两种流程。 |
+| [Open Camera](https://sourceforge.net/p/opencamera/code/) | [GPL-3.0-or-later](https://www.opencamera.org.uk/)；SourceForge 修订 [`0dd4cbe…`](https://sourceforge.net/p/opencamera/code/ci/0dd4cbe78872df2c6e4eb6cee3fb0d5637b0f52e/) 标为 v1.56.2，日期 2026-05-27 | [CameraController2](https://sourceforge.net/p/opencamera/code/ci/0dd4cbe78872df2c6e4eb6cee3fb0d5637b0f52e/tree/app/src/main/java/net/sourceforge/opencamera/cameracontroller/CameraController2.java) 使用后台相机线程和锁；[ImageSaver](https://sourceforge.net/p/opencamera/code/ci/0dd4cbe78872df2c6e4eb6cee3fb0d5637b0f52e/tree/app/src/main/java/net/sourceforge/opencamera/ImageSaver.java) 有按堆大小估计容量、按 JPEG／DNG 成本计数的有界队列；[StorageUtils](https://sourceforge.net/p/opencamera/code/ci/0dd4cbe78872df2c6e4eb6cee3fb0d5637b0f52e/tree/app/src/main/java/net/sourceforge/opencamera/StorageUtils.java) 处理 MediaStore、SAF 和最近媒体。 |
+| [Fossify Camera](https://github.com/FossifyOrg/Camera) | [GPL-3.0](https://github.com/FossifyOrg/Camera/blob/main/LICENSE)；默认分支于 2026-11-18 更新（[提交](https://github.com/FossifyOrg/Camera/commit/11162931c2fb1a87682619816ae047911e85c758)），[1.5.0](https://github.com/FossifyOrg/Camera/releases/tag/1.5.0) 于 2026-01-30 发布 | [ImageSaver](https://github.com/FossifyOrg/Camera/blob/main/app/src/main/kotlin/org/fossify/camera/helpers/ImageSaver.kt) 在后台写临时文件、处理 EXIF 并使用 MediaStore pending；[MainActivity](https://github.com/FossifyOrg/Camera/blob/main/app/src/main/kotlin/org/fossify/camera/activities/MainActivity.kt) 有定时、比例、分辨率和闪光控件，并处理暂停／恢复。 |
+| [Fossify Gallery](https://github.com/FossifyOrg/Gallery) | [GPL-3.0](https://github.com/FossifyOrg/Gallery/blob/main/LICENSE)；默认分支于 2026-11-18 更新（[提交](https://github.com/FossifyOrg/Gallery/commit/e601ccbaa806f6bd6948ffc7ac3bcffb9fdb4692)），[1.14.2](https://github.com/FossifyOrg/Gallery/releases/tag/1.14.2) 于 2026-11-07 发布 | [MediaFetcher](https://github.com/FossifyOrg/Gallery/blob/main/app/src/main/kotlin/org/fossify/gallery/helpers/MediaFetcher.kt) 查询 MediaStore、文件夹、排序和分组；[GalleryDatabase](https://github.com/FossifyOrg/Gallery/blob/main/app/src/main/kotlin/org/fossify/gallery/databases/GalleryDatabase.kt) 使用 Room 及迁移；[EditActivity](https://github.com/FossifyOrg/Gallery/blob/main/app/src/main/kotlin/org/fossify/gallery/activities/EditActivity.kt) 通过 Glide、裁切和滤镜在后台编辑。 |
+| [CameraKit Android](https://github.com/CameraKit/camerakit-android) | [MIT](https://github.com/CameraKit/camerakit-android/blob/master/LICENSE)；最后一次默认分支活动为 2023-08-08（[提交](https://github.com/CameraKit/camerakit-android/commit/6e49752ab52601294cfb9ebfeba055523bd81745)） | [Camera1](https://github.com/CameraKit/camerakit-android/blob/master/camerakit/src/main/api16/com/wonderkiln/camerakit/Camera1.java)／[Camera2](https://github.com/CameraKit/camerakit-android/blob/master/camerakit/src/main/api21/com/wonderkiln/camerakit/Camera2.java) 按 API 分 backend；[ProcessStillTask](https://github.com/CameraKit/camerakit-android/blob/master/camerakit/src/main/api16/com/wonderkiln/camerakit/ProcessStillTask.java) 负责静态图处理；[测试流程](https://github.com/CameraKit/camerakit-android/blob/master/.github/TESTING_PROCEDURES.md)列出 30 秒 30 张等场景，但不是已通过的结果。 |
+
+### 当前能力对照（性能列仅记录是否有源码／测试机制；本轮未做横向测量）
+
+| 项目 | Feature／功能 | UI | Perf／性能证据 | Arch／架构 | Security／恢复相关 | Extensibility／扩展性 |
+| --- | --- | --- | --- | --- | --- | --- |
+| LUMORA 2.1.4 范围 | JPEG 拍摄、非破坏性编辑、PRO 请求值与 EXIF 核对 | 取景、作品库、设置；本轮补全全局错误可见性 | 本轮不新增性能指标；只测试协议和状态转移 | CameraX controller、单飞快门、串行全尺寸处理、本地记录 | 现有版本／资产／摘要／签名校验；本轮加入短退避、可关闭重试提示的验收范围 | 本轮不增加拍摄或编辑扩展 |
+| Jetpack Camera App | CameraX 照片／视频、HDR、低光、并发和手动控制 | Compose 分层取景及 post-capture review | 有设备测试和启动／捕获 benchmark；未与 LUMORA 测量 | 多模块、生命周期 session、controller、MediaRepository | 权限、外部 intent、MediaStore 路径明确；未见同类应用内更新协议 | feature provider／submode 机制和独立样例模块 |
+| Open Camera | Camera1/2、RAW+JPEG、HDR、连拍、包围曝光和手动控制 | 设置密集的成熟相机操作界面 | 源码有按内存估算的有界加权保存队列；未做吞吐或峰值测量 | Camera1/2 backend、后台线程、ImageSaver、StorageUtils | MediaStore／SAF 路径处理；未在核验树中发现专门更新协议 | RAW、HDR、全景、预拍等功能分层；旧 API 兼容成本高 |
+| Fossify Camera | 照片／视频、闪光、比例、定时和分辨率 | Activity/XML 风格，主操作直接、控件较少 | 后台保存和 pending MediaStore 机制；未测延迟、内存或耐久性 | CameraXPreview 加 helper／activity 结构 | pending 写入和错误回调；未见专门更新安全协议 | 适合简单相机控制；核验范围内未见 PRO 控制扩展 |
+| Fossify Gallery | MediaStore 浏览、文件夹、排序、收藏、裁切和滤镜 | 文件夹／网格／编辑器功能完整 | 缩略图和后台编辑机制；未测大库内存或编辑耗时 | MediaFetcher、Room DAO／迁移、Glide、Activity | 权限／SAF 对话框；Room 配置含 destructive fallback，不能直接视为恢复范式 | DAO、编辑器和多种媒体操作可扩展；GPL 需单独评估 |
+| CameraKit Android | Camera1/2 照片／视频、对焦、缩放和闪光基础能力 | 可嵌入的 library view 与事件回调，无完整 PRO UI | 测试文档列出 rapid-fire 场景；无已核验的性能结果 | API 分源集、CameraImpl 抽象、Java/NDK 处理 | 核验到权限／生命周期代码；未见更新恢复协议，维护证据较旧 | MIT、封装边界清楚；旧 Camera1／API 兼容限制明显 |
+
+许可证取舍：LUMORA 仍是 MIT。Apache-2.0／MIT 项目只作为设计参考；GPL 项目的代码、资源、预设和依赖不复制、不导入，若未来考虑复用必须另做分发与衍生作品审查。以上性能栏没有跨项目结论，活动日期和功能均以链接中的当前仓库／文档为准。
+
+
 ## 2026-11-21：拍摄、权限与作品库对照
 
 用仓库公开 API、源码和官方文档复核以下项目。没有用同一台设备、镜头、分辨率做横向基准，因而不对速度、功耗或画质排序；本轮未导入任何第三方源码、预设、着色器或依赖。

@@ -19,16 +19,25 @@ import java.net.URI
 import java.security.MessageDigest
 import javax.net.ssl.HttpsURLConnection
 
-internal class AndroidUpdater(private val context: Context) {
+internal interface UpdateClient {
+    val versionName: String
+    suspend fun check(): UpdateOffer?
+    fun incompatibility(offer: UpdateOffer): String?
+    suspend fun download(offer: UpdateOffer, progress: (Long) -> Unit)
+    suspend fun installIntent(offer: UpdateOffer): Intent
+    fun clearDownloaded()
+}
+
+internal class AndroidUpdater(private val context: Context) : UpdateClient {
     private val packages = context.packageManager
     private val packageName = context.packageName
     private val installed by lazy { installedPackage() }
-    val versionName: String get() = installed.versionName.orEmpty()
+    override val versionName: String get() = installed.versionName.orEmpty()
     private val updates get() = File(context.cacheDir, "verified-update")
     private val apk get() = File(updates, "lumora.apk")
     private val partial get() = File(context.cacheDir, "lumora-update.part.apk")
 
-    suspend fun check(): UpdateOffer? = withContext(Dispatchers.IO) {
+    override suspend fun check(): UpdateOffer? = withContext(Dispatchers.IO) {
         val response = receive(URI(RELEASE_API), "application/vnd.github+json", redirects = false) { stream ->
             readJson(stream, 256 * 1024)
         } ?: return@withContext null
@@ -38,13 +47,13 @@ internal class AndroidUpdater(private val context: Context) {
         parseOffer(JSONObject(metadata.toString(Charsets.UTF_8.name())), release, packageName, installed.longVersionCode)
     }
 
-    fun incompatibility(offer: UpdateOffer): String? = when {
+    override fun incompatibility(offer: UpdateOffer): String? = when {
         offer.minSdk > Build.VERSION.SDK_INT -> "此版本需要 Android API ${offer.minSdk} 或以上版本"
         certificate(installed) != offer.certificate -> "当前安装包与正式版的签名不同，无法覆盖安装"
         else -> null
     }
 
-    suspend fun download(offer: UpdateOffer, progress: (Long) -> Unit) = withContext(Dispatchers.IO) {
+    override suspend fun download(offer: UpdateOffer, progress: (Long) -> Unit) = withContext(Dispatchers.IO) {
         incompatibility(offer)?.let { throw UpdateFailure(it) }
         if (!updates.isDirectory && !updates.mkdirs()) throw UpdateFailure("无法创建下载目录")
         if (apk.exists() && !apk.delete()) throw UpdateFailure("无法清理上次的更新文件")
@@ -61,7 +70,7 @@ internal class AndroidUpdater(private val context: Context) {
         }
     }
 
-    suspend fun installIntent(offer: UpdateOffer): Intent = withContext(Dispatchers.IO) {
+    override suspend fun installIntent(offer: UpdateOffer): Intent = withContext(Dispatchers.IO) {
         verifyArchive(apk, offer)
         val uri = FileProvider.getUriForFile(context, "$packageName.updates", apk)
         Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
@@ -69,7 +78,7 @@ internal class AndroidUpdater(private val context: Context) {
             .putExtra(Intent.EXTRA_RETURN_RESULT, true)
     }
 
-    fun clearDownloaded() {
+    override fun clearDownloaded() {
         apk.delete()
         partial.delete()
     }

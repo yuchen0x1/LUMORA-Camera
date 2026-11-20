@@ -2,6 +2,7 @@ package com.lumora.camera.update
 
 import android.app.Application
 import android.content.Intent
+import android.content.SharedPreferences
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -9,26 +10,30 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
 
-internal enum class UpdateFrequency(val label: String, val days: Long) {
-    MANUAL("仅手动", 0), DAILY("每天", 1), WEEKLY("每周", 7)
-}
-
 internal sealed interface UpdateState {
     data object Idle : UpdateState
     data object Checking : UpdateState
-    data class Notice(val text: String) : UpdateState
+    data class Notice(val text: String, val retryable: Boolean = false) : UpdateState
     data class Available(val offer: UpdateOffer) : UpdateState
     data class Downloading(val offer: UpdateOffer, val received: Long = 0, val bytesPerSecond: Long = 0) : UpdateState
     data class Ready(val offer: UpdateOffer) : UpdateState
 }
 
-internal class UpdateViewModel(application: Application) : AndroidViewModel(application) {
-    private val updater = AndroidUpdater(application)
-    private val prefs = application.getSharedPreferences("lumora_updates", 0)
+internal class UpdateViewModel(
+    application: Application,
+    private val updater: UpdateClient,
+    private val prefs: SharedPreferences,
+    private val clock: () -> Long
+) : AndroidViewModel(application) {
+    constructor(application: Application) : this(application, AndroidUpdater(application),
+        application.getSharedPreferences("lumora_updates", 0), System::currentTimeMillis)
+
     val installedVersion get() = updater.versionName
     var frequency by mutableStateOf(UpdateFrequency.entries.firstOrNull {
         it.name == prefs.getString("frequency", null)
@@ -45,18 +50,20 @@ internal class UpdateViewModel(application: Application) : AndroidViewModel(appl
     }
 
     fun check(manual: Boolean) {
-        if (job?.isActive == true || state is UpdateState.Available || state is UpdateState.Ready) return
-        val now = System.currentTimeMillis()
-        val last = prefs.getLong("lastChecked", 0)
-        if (!manual && (frequency == UpdateFrequency.MANUAL ||
-                (last <= now && now - last < TimeUnit.DAYS.toMillis(frequency.days)))) return
-        prefs.edit().putLong("lastChecked", now).apply()
+        if (job?.isActive == true || state is UpdateState.Available || state is UpdateState.Ready ||
+            (!manual && state is UpdateState.Notice)) return
+        val now = clock()
+        if (!manual && !UpdateCheckPolicy.isDue(frequency, now,
+                prefs.getLong("lastSuccessfulCheck", 0), prefs.getLong("lastFailedCheck", 0))) return
         if (manual) state = UpdateState.Checking
         job = viewModelScope.launch {
             try {
                 val offer = updater.check()
+                val completed = clock()
+                // Older lastChecked values include failed attempts and cannot prove success.
+                prefs.edit().putLong("lastSuccessfulCheck", completed).remove("lastFailedCheck").apply()
                 val deferred = offer?.release?.name == prefs.getString("laterVersion", null) &&
-                    now < prefs.getLong("laterUntil", 0)
+                    completed < prefs.getLong("laterUntil", 0)
                 state = when {
                     offer != null && (manual || !deferred) -> UpdateState.Available(offer)
                     manual -> UpdateState.Notice("没有可用的正式更新")
@@ -65,7 +72,8 @@ internal class UpdateViewModel(application: Application) : AndroidViewModel(appl
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
-                state = if (manual) UpdateState.Notice(message(error, "检查更新失败，请确认网络后重试"))
+                prefs.edit().putLong("lastFailedCheck", clock()).apply()
+                state = if (manual) UpdateState.Notice(message(error, "检查更新失败，请确认网络后重试"), retryable = true)
                 else UpdateState.Idle
             }
         }
@@ -75,8 +83,11 @@ internal class UpdateViewModel(application: Application) : AndroidViewModel(appl
 
     fun later(offer: UpdateOffer) {
         prefs.edit().putString("laterVersion", offer.release.name)
-            .putLong("laterUntil", System.currentTimeMillis() + TimeUnit.DAYS.toMillis(7)).apply()
-        if (state is UpdateState.Ready) updater.clearDownloaded()
+            .putLong("laterUntil", clock() + TimeUnit.DAYS.toMillis(7)).apply()
+        if (state is UpdateState.Ready) {
+            job?.cancel()
+            updater.clearDownloaded()
+        }
         state = UpdateState.Idle
     }
 
@@ -100,7 +111,7 @@ internal class UpdateViewModel(application: Application) : AndroidViewModel(appl
                 state = UpdateState.Available(offer)
                 throw error
             } catch (error: Exception) {
-                state = UpdateState.Notice(message(error, "下载中断或写入失败，请重新检查并下载"))
+                state = UpdateState.Notice(message(error, "下载中断或写入失败，请重新检查并下载"), retryable = true)
             }
         }
     }
@@ -113,12 +124,15 @@ internal class UpdateViewModel(application: Application) : AndroidViewModel(appl
         if (job?.isActive == true || state != UpdateState.Ready(offer)) return
         job = viewModelScope.launch {
             try {
-                launch(updater.installIntent(offer))
+                val intent = updater.installIntent(offer)
+                currentCoroutineContext().ensureActive()
+                launch(intent)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
+                currentCoroutineContext().ensureActive()
                 updater.clearDownloaded()
-                state = UpdateState.Notice(message(error, "无法启动系统安装，请重新下载"))
+                state = UpdateState.Notice(message(error, "无法启动系统安装，请重新下载"), retryable = true)
             }
         }
     }
@@ -126,7 +140,7 @@ internal class UpdateViewModel(application: Application) : AndroidViewModel(appl
     fun installationReturned() {
         if (state is UpdateState.Ready) {
             updater.clearDownloaded()
-            state = UpdateState.Notice("系统安装已结束，当前仍可使用；如需重试请再次检查更新")
+            state = UpdateState.Notice("系统安装已结束，当前仍可使用；如需重试请再次检查更新", retryable = true)
         }
     }
 
