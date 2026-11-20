@@ -1,8 +1,8 @@
-# LUMORA Camera 2.0.0
+# LUMORA Camera
 
 LUMORA 是一款面向 Android 10 及以上系统的本地摄影应用。可以从取景器拍摄 JPEG，在同一张原图上尝试胶片风格与编辑参数，并在作品库中比较不同版本。
 
-在 Android 10 及以上设备上试用时，请从 [v2.0.0 测试版发布页](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.0.0) 下载 `LUMORA-Camera-2.0.0-debug-test.apk`。该 APK 使用 Android 调试证书签名，仅供测试。版本变化见[更新记录](CHANGELOG.md)。
+当前源码准备版本为 **2.1.1（versionCode 4，待发布）**。最近公开资产仍是 [v2.0.0 测试版](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.0.0) 的 `LUMORA-Camera-2.0.0-debug-test.apk`，使用 Android 调试证书，仅供测试。`v2.1.0` 是未发布候选标签；应用内更新等候选功能计划随 2.1.1 首次交付，详见[更新记录](CHANGELOG.md)。发布前须完成构建插件依赖安全审查；本次版本准备不代表已提供正式下载。
 
 ![API 35 模拟器上的取景界面](docs/screenshots/v2-camera.png)
 
@@ -36,7 +36,7 @@ LUMORA 是一款面向 Android 10 及以上系统的本地摄影应用。可以�
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Debug 安装包位于 `app/build/outputs/apk/debug/app-debug.apk`。当前工程没有配置发布签名，Release 输出为 `app/build/outputs/apk/release/app-release-unsigned.apk`。该文件需由发布者签名后安装。首次使用 Gradle Wrapper 会下载固定版本的 Gradle；离线环境可通过本机已安装的同版本 Gradle 执行上述任务。
+Debug 安装包位于 `app/build/outputs/apk/debug/app-debug.apk`；本地 Release 输出为 `app/build/outputs/apk/release/app-release-unsigned.apk`，需签名后才能安装。正式发布流程通过受保护的 `android-release` 环境签名，保留证书、版本和摘要校验及签名 APK 的模拟器安装启动检查；本地工程不包含发布密钥。调试测试版不能覆盖安装不同签名的正式版；保留原安装和照片，勿为升级直接卸载。分发规则见[平台与分发](docs/PLATFORMS.md)。首次使用 Gradle Wrapper 会下载固定版本的 Gradle；离线环境可通过本机已安装的同版本 Gradle 执行上述任务。
 
 ## 验证资料
 
