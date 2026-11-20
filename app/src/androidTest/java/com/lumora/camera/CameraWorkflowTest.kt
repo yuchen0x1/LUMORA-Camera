@@ -15,6 +15,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lumora.camera.data.OptimizationStrength
+import com.lumora.camera.update.AndroidUpdater
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -125,7 +126,7 @@ class CameraWorkflowTest : CameraUiTest() {
         requireNotNull(before)
         toggle.tapCenter()
         try {
-            for (title in listOf("拍摄", "摄影辅助", "成片", "存储", "设备能力", "${lens.lensFacing} · ID ${lens.cameraId}", "关于", "2.0.0")) {
+            for (title in listOf("拍摄", "摄影辅助", "成片", "存储", "设备能力", "${lens.lensFacing} · ID ${lens.cameraId}", "关于", AndroidUpdater(context).versionName)) {
                 compose.onNodeWithText(title).performScrollTo().assertIsDisplayed()
             }
             control("返回").tapCenter()
