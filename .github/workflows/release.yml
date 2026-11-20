@@ -45,6 +45,7 @@ jobs:
           cache-read-only: true
       - env:
           EXPECTED_SIGNER: ${{ vars.ANDROID_SIGNER_SHA256 }}
+          GH_TOKEN: ${{ github.token }}
         run: python3 scripts/release/android.py new-tag "$GITHUB_REF_NAME" --certificate "$EXPECTED_SIGNER"
       - run: |
           ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_HOME} 'platforms;android-36' 'build-tools;36.0.0'
