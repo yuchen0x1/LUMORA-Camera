@@ -2,7 +2,7 @@
 
 LUMORA 是一款面向 Android 10 及以上系统的本地摄影应用。可以从取景器拍摄 JPEG，在同一张原图上尝试胶片风格与编辑参数，并在作品库中比较不同版本。
 
-当前源码准备版本为 **2.1.1（versionCode 4，待发布）**。最近公开资产仍是 [v2.0.0 测试版](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.0.0) 的 `LUMORA-Camera-2.0.0-debug-test.apk`，使用 Android 调试证书，仅供测试。`v2.1.0` 是未发布候选标签；应用内更新等候选功能计划随 2.1.1 首次交付，详见[更新记录](CHANGELOG.md)。发布前须完成构建插件依赖安全审查；本次版本准备不代表已提供正式下载。
+当前源码准备版本为 **2.1.2（versionCode 6，待发布）**，包含作品索引容错、强度参数校验和依赖安全修复；正式下载以 [GitHub Releases](https://github.com/yuchen0x1/LUMORA-Camera/releases) 中通过签名发布流水线的资产为准。`v2.1.0` 是未发布候选标签，历史 [v2.0.0 测试版](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.0.0) 使用调试证书，均不能直接覆盖为不同签名的正式包；不要为升级自动卸载旧应用。版本变化见[更新记录](CHANGELOG.md)，实际发布状态见[发布历史](RELEASE_HISTORY.md)。
 
 ![API 35 模拟器上的取景界面](docs/screenshots/v2-camera.png)
 
@@ -29,14 +29,14 @@ LUMORA 是一款面向 Android 10 及以上系统的本地摄影应用。可以�
 
 ## 构建与安装
 
-项目使用 Gradle 9.1.0、AGP 9.0.1、CameraX 1.6.2、compileSdk 36 和 targetSdk 35。本机构建使用 JDK 21；需要安装 Android SDK 与 Build Tools。
+项目使用 Gradle 9.1.0、AGP 9.0.1、Kotlin/Compose 编译插件 2.4.21、CameraX 1.6.2、compileSdk 36 和 targetSdk 35。`settings.gradle.kts` 为已知漏洞依赖设置修复下限，适用于构建、运行与测试工具配置；见[安全审查](SECURITY_AUDIT.md)。本机构建使用 JDK 21；需要安装 Android SDK 与 Build Tools。Windows 中文路径可能触发 AGP/单测路径问题，请在独立纯英文路径构建，不绕过系统执行策略。
 
 ```powershell
 .\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleRelease
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Debug 安装包位于 `app/build/outputs/apk/debug/app-debug.apk`；本地 Release 输出为 `app/build/outputs/apk/release/app-release-unsigned.apk`，需签名后才能安装。正式发布流程通过受保护的 `android-release` 环境签名，保留证书、版本和摘要校验及签名 APK 的模拟器安装启动检查；本地工程不包含发布密钥。调试测试版不能覆盖安装不同签名的正式版；保留原安装和照片，勿为升级直接卸载。分发规则见[平台与分发](docs/PLATFORMS.md)。首次使用 Gradle Wrapper 会下载固定版本的 Gradle；离线环境可通过本机已安装的同版本 Gradle 执行上述任务。
+Debug 安装包位于 `app/build/outputs/apk/debug/app-debug.apk`；本地 Release 输出为 `app/build/outputs/apk/release/app-release-unsigned.apk`，需签名后才能安装。正式发布流程通过受保护的 `android-release` 环境签名，保留证书、版本和摘要校验及签名 APK 的模拟器安装启动检查；本地工程不包含发布密钥。调试测试版不能覆盖安装不同签名的正式版；保留原安装和照片，勿为升级直接卸载。分发规则见[平台与分发](docs/PLATFORMS.md)。首次使用 Gradle Wrapper 会下载固定版本的 Gradle；离线构建需要预先缓存全部依赖。
 
 ## 验证资料
 

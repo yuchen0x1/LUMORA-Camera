@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -49,6 +50,10 @@ class CameraWorkflowTest : CameraUiTest() {
         after.assertIsSelected()
         control("收藏作品").tapCenter()
         awaitPhoto("Favorite was not saved") { it.enhancedUri == first.enhancedUri && it.favorite }
+        // The snackbar that hosts the undo action may compose after the record update lands.
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose.onAllNodes(hasContentDescription("取消收藏作品")).fetchSemanticsNodes().isNotEmpty()
+        }
         control("取消收藏作品").assertIsDisplayed()
         compose.onNodeWithText("编辑").performScrollTo().tapCenter()
         val newStrength = OptimizationStrength.entries.first { it != first.strength }
