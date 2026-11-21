@@ -41,7 +41,8 @@ import java.util.concurrent.atomic.AtomicReference
 @OptIn(ExperimentalTestApi::class)
 class CameraPermissionNavigationTest {
     // Compose 1.7.6 defaults to UnconfinedTestDispatcher, which can resume gallery
-    // collection/recomposition on its IO producer. The test clock drains this queue on UI.
+    // collection/recomposition on its IO producer. Queue it for the test clock, which
+    // advances its scheduler on the UI thread.
     @get:Rule val compose = createComposeRule(effectContext = StandardTestDispatcher())
     private val application = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as Application
     private val namespace = "permission-navigation-test-${UUID.randomUUID()}"
