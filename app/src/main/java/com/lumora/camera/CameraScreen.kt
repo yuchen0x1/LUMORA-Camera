@@ -129,7 +129,7 @@ internal fun CameraScreen(
     }
     var aids by remember {
         mutableStateOf(PhotoAids(
-            grid = if (settings.goldenGrid) CompositionGrid.GOLDEN else CompositionGrid.OFF,
+            grid = settings.compositionGrid,
             level = settings.level, histogram = settings.histogram, clipping = settings.clipping, peaking = settings.peaking
         ))
     }
@@ -398,8 +398,8 @@ internal fun CameraScreen(
                                         onTimer = { timer = it }, onBurst = { burst = it },
                                         onWide = { if (wide != it) { capabilities = null; wide = it } },
                                         onAids = {
+                                            if (it.grid != aids.grid) settings.compositionGrid = it.grid
                                             aids = it
-                                            settings.goldenGrid = it.grid == CompositionGrid.GOLDEN
                                             settings.level = it.level; settings.histogram = it.histogram
                                             settings.clipping = it.clipping; settings.peaking = it.peaking
                                         }, onLens = ::selectLens)

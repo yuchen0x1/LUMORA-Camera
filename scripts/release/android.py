@@ -16,7 +16,12 @@ REPO = "yuchen0x1/LUMORA-Camera"
 PACKAGE = "com.lumora.camera"
 UPDATE = "android-update.json"
 SUMS = "SHA256SUMS.txt"
-VERSION = r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
+VERSION_PART = r"(?:0|[1-9][0-9]{0,8})"
+VERSION = rf"{VERSION_PART}\.{VERSION_PART}\.{VERSION_PART}"
+MAX_VERSION_CODE = 2_100_000_000
+MAX_SDK = 2_147_483_647
+MAX_APK_BYTES = 512 * 1024 * 1024
+MAX_JSON_BYTES = 8_192
 
 
 def run(*command):
@@ -26,6 +31,17 @@ def run(*command):
 def require(condition, message):
     if not condition:
         raise SystemExit(message)
+
+
+def integer_in_range(value, minimum, maximum):
+    # bool subclasses int in Python, but is not an Android JSON integer.
+    return type(value) is int and minimum <= value <= maximum
+
+
+def valid_asset_size(value, maximum):
+    # GitHub asset sizes, unlike metadata integers, may be integral JSON floats.
+    # The bounds also reject NaN and infinities before conversion to int.
+    return type(value) in (int, float) and 1 <= value <= maximum and value == int(value)
 
 
 def digest(path):
@@ -38,7 +54,8 @@ def version(tag):
                   (ROOT / "version.properties").read_text().splitlines())
     name, code, minimum = values["versionName"], int(values["versionCode"]), int(values["minSdk"])
     require(re.fullmatch(VERSION, name) and tag == f"v{name}", "Tag and version.properties must agree")
-    require(0 < code <= 2_100_000_000 and minimum >= 29, "Invalid Android version or minimum SDK")
+    require(integer_in_range(code, 1, MAX_VERSION_CODE) and integer_in_range(minimum, 29, MAX_SDK),
+            "Invalid Android version or minimum SDK")
     return name, code, minimum
 
 
@@ -46,6 +63,7 @@ def prepare(args):
     name, code, minimum = version(args.tag)
     expected = args.certificate.lower()
     require(re.fullmatch(r"[a-f0-9]{64}", expected), "Configure ANDROID_SIGNER_SHA256")
+    require(integer_in_range(args.apk.stat().st_size, 1, MAX_APK_BYTES), "Invalid APK size")
     tools = Path(os.environ["ANDROID_HOME"]) / "build-tools" / "36.0.0"
     windows = os.name == "nt"
     signer = str(tools / ("apksigner.bat" if windows else "apksigner"))
@@ -128,6 +146,9 @@ def check_public(args):
     name = tag[1:]
     filename = f"LUMORA-Camera-{name}-Android-universal.apk"
     assets = {a["name"]: a for a in release["assets"] if a["state"] == "uploaded"}
+    for asset, maximum in ((filename, MAX_APK_BYTES), (UPDATE, MAX_JSON_BYTES), (SUMS, MAX_JSON_BYTES)):
+        require(asset in assets and valid_asset_size(assets[asset].get("size"), maximum),
+                f"Invalid asset size for {asset}")
 
     def open_asset(asset):
         url = f"https://github.com/{REPO}/releases/download/{tag}/{asset}"
@@ -136,19 +157,23 @@ def check_public(args):
 
     def read_small(asset):
         with open_asset(asset) as stream:
-            data = stream.read(8193)
-        require(len(data) <= 8192 and assets[asset]["digest"] ==
-                f"sha256:{hashlib.sha256(data).hexdigest()}", f"Invalid {asset}")
+            data = stream.read(MAX_JSON_BYTES + 1)
+        require(1 <= len(data) <= MAX_JSON_BYTES and len(data) == assets[asset]["size"] and
+                assets[asset]["digest"] == f"sha256:{hashlib.sha256(data).hexdigest()}", f"Invalid {asset}")
         return data
 
     metadata = json.loads(read_small(UPDATE))
-    require(metadata["schema"] == 1 and metadata["packageName"] == PACKAGE and
-            metadata["asset"] == filename and metadata["versionName"] == name and
-            metadata["platform"] == "android" and metadata["architecture"] == "universal" and
-            metadata["channel"] == "stable" and type(metadata["versionCode"]) is int and
-            0 < metadata["versionCode"] <= 2_100_000_000 and type(metadata["minSdk"]) is int and
-            metadata["minSdk"] >= 29 and re.fullmatch("[a-f0-9]{64}", metadata["signerSha256"]) and
-            metadata["size"] == assets[filename]["size"], "Invalid public update metadata")
+    require(isinstance(metadata, dict) and integer_in_range(metadata.get("schema"), 1, 1) and
+            metadata.get("packageName") == PACKAGE and metadata.get("asset") == filename and
+            metadata.get("versionName") == name and metadata.get("platform") == "android" and
+            metadata.get("architecture") == "universal" and metadata.get("channel") == "stable" and
+            integer_in_range(metadata.get("versionCode"), 1, MAX_VERSION_CODE) and
+            integer_in_range(metadata.get("minSdk"), 29, MAX_SDK) and
+            integer_in_range(metadata.get("size"), 1, MAX_APK_BYTES) and
+            metadata["size"] == assets[filename]["size"] and
+            isinstance(metadata.get("sha256"), str) and re.fullmatch("[a-f0-9]{64}", metadata["sha256"]) and
+            isinstance(metadata.get("signerSha256"), str) and
+            re.fullmatch("[a-f0-9]{64}", metadata["signerSha256"]), "Invalid public update metadata")
     with open_asset(filename) as stream:
         apk_digest = hashlib.file_digest(stream, "sha256").hexdigest()
     require(assets[filename]["digest"] == f"sha256:{apk_digest}" and metadata["sha256"] == apk_digest,

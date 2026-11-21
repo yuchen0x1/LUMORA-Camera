@@ -1,5 +1,30 @@
 # 竞品与技术调研
 
+## 2026-11-21：2.1.6 对焦正确性与构图偏好
+
+本轮重新访问以下五个官方仓库的 README、许可证证据及相关实现，以 GitHub API 核对默认分支提交。均未归档；日期是提交者时间，不是发行日期。未运行上游代码、未复制实现/素材、未新增依赖，没有横向延迟、内存、能耗或画质基准。
+
+| 仓库 / 许可证证据 | 核对快照（UTC） | 实际源码与本轮吸收的思路 |
+| --- | --- | --- |
+| [Jetpack Camera App](https://github.com/google/jetpack-camera-app) / [Apache-2.0](https://github.com/google/jetpack-camera-app/blob/64a105b61ad0e97bc391c5d98109022b73feb567/LICENSE) | `64a105b61ad0`，2026-11-20 22:44:16 | [FocusMetering](https://github.com/google/jetpack-camera-app/blob/64a105b61ad0e97bc391c5d98109022b73feb567/core/camera/src/main/java/com/google/jetpackcamera/core/camera/FocusMetering.kt#L55-L170) 使用真实完成/失败/取消状态；[CameraSessionEffect](https://github.com/google/jetpack-camera-app/blob/64a105b61ad0e97bc391c5d98109022b73feb567/ui/components/capture/src/main/java/com/google/jetpackcamera/ui/components/capture/CameraSessionEffect.kt#L29-L80) 明确会话生命周期。LUMORA 保留自己的 AF 完成判定，补上手动请求时的失效与迟到回调测试。 |
+| [Android camera-samples](https://github.com/android/camera-samples) / 检查源码头声明 Apache-2.0 | `154c954abc5c80dddf07d264319cf89a3e1ccda9`，2026-11-03 16:50:11 | [README](https://github.com/android/camera-samples/blob/154c954abc5c80dddf07d264319cf89a3e1ccda9/README.md) 与 [版权头模板](https://github.com/android/camera-samples/blob/154c954abc5c80dddf07d264319cf89a3e1ccda9/spotless/copyright.kt)。当前为 Compose-first 功能目录，共享相机/UI 模块；[ImageUtils.kt](https://github.com/android/camera-samples/blob/154c954abc5c80dddf07d264319cf89a3e1ccda9/core-camera/src/main/java/com/android/camera/core/image/ImageUtils.kt#L37-L45) 在 `try`/`finally` 中确保关闭图像。参考职责分层和资源释放边界。该快照根 LICENSE/许可证 API 返回 404，SPDX 检测为空；不据此宣称全部资源授权明确，本轮不复制。 |
+| [GrapheneOS Camera](https://github.com/GrapheneOS/Camera) / [MIT](https://github.com/GrapheneOS/Camera/blob/07ec468426884a92bcb52a0d346c3a9cd7886800/LICENSE) | `07ec46842688`，2026-11-20 22:09:07 | [CamConfig 网格持久化](https://github.com/GrapheneOS/Camera/blob/07ec468426884a92bcb52a0d346c3a9cd7886800/app/src/main/java/app/grapheneos/camera/CamConfig.kt#L425-L432) 与 [ImageSaver](https://github.com/GrapheneOS/Camera/blob/07ec468426884a92bcb52a0d346c3a9cd7886800/app/src/main/java/app/grapheneos/camera/capturer/ImageSaver.kt#L100-L123)。参考稳定偏好标识、原片与缩略图失败隔离；其界面是 Views，不是 Compose。 |
+| [Fossify Camera](https://github.com/FossifyOrg/Camera) / [GPLv3](https://github.com/FossifyOrg/Camera/blob/11162931c2fb1a87682619816ae047911e85c758/LICENSE) | `11162931c2fb`，2026-11-18 01:49:41 | [Config](https://github.com/FossifyOrg/Camera/blob/11162931c2fb1a87682619816ae047911e85c758/app/src/main/kotlin/org/fossify/camera/helpers/Config.kt) 与 [CameraXPreview](https://github.com/FossifyOrg/Camera/blob/11162931c2fb1a87682619816ae047911e85c758/app/src/main/kotlin/org/fossify/camera/implementations/CameraXPreview.kt#L398-L413)。参考常用控制和偏好边界，不把点按环动画当作 AF 成功证明；不复制或移植 GPL 实现到 MIT 工程。该证据未独立确定 only/or-later。 |
+| [Aves](https://github.com/deckerst/aves) / [BSD-3-Clause](https://github.com/deckerst/aves/blob/2184b35b116a9b82bfacf91475b209dbc3e814dc/LICENSE) | `2184b35b116a9`，develop，2026-11-19 17:29:38 | [ImageProvider](https://github.com/deckerst/aves/blob/2184b35b116a9b82bfacf91475b209dbc3e814dc/android/app/src/main/kotlin/deckers/thibault/aves/model/provider/ImageProvider.kt#L708-L857) 区分输出和冲突策略，Flutter+Kotlin 服务边界清晰；REPLACE 会删旧目标，不能笼统称为非破坏性。LUMORA 继续默认另存成片，不引入 Flutter。 |
+
+### 六维比较与实施边界
+
+| 维度 | LUMORA 主线实际状态 | 参考发现 | 本轮取舍 |
+| --- | --- | --- | --- |
+| 功能 | JPEG、20 风格、手动控制、非破坏性版本；无视频/RAW 输出 | JCA/GrapheneOS/Fossify 覆盖视频等，Aves 偏多格式图库 | 先修复既有拍摄和构图，不为数量添加拍摄模式 |
+| UI/UX | 取景器三态构图，设置只有旧黄金开关且三分选择会丢失 | GrapheneOS 持久化网格；Fossify 快速控制 | 统一三态选择，兼容旧偏好；不重设计取景布局 |
+| 性能 | 有界辅助帧、串行全尺寸处理；无新增实测瓶颈数据 | 样例图像 finally close；Aves 分块/缩略图分层 | 保留有效 AF 短缓存，不宣称速度/画质提升 |
+| 架构 | 单 app 模块；相机协调器与控制请求、SharedPreferences 设置 | JCA 强调会话和设置边界 | 小型纯 Kotlin 确认策略，可控时钟，不进行多模块重写 |
+| 安全/可靠性 | 真实 AF 结果、原图保留、同证书更新；发布/客户端类型检查不完全一致 | JCA 取消所有权；GrapheneOS 未完成写入清理 | 请求前失效旧 AF；发布元数据校验与客户端对齐；不更改签名信任根 |
+| 扩展性 | 旧 Boolean 不足表达三态；图库完整 JSON 重写 | JCA typed settings、Aves provider/service 边界 | 稳定枚举名加未知值回退，保留 legacy 字段；数据库迁移另行设计 |
+
+MIT/BSD/Apache 代码如将来复用仍须保留适用版权与许可证，根许可证不替代逐文件/依赖/素材核对。本轮仅独立实现设计思想，无第三方源码、预设或品牌的移入。
+
 ## 2026-11-21（本地）/ 2026-11-20（UTC）：2.1.5 数据保全与会话隔离
 
 本轮从正式 2.1.4 主线出发，重新访问五个官方仓库、README 和下面列出的实现文件。提交时间由 GitHub commits API 核对，不把 `pushed_at` 当作代码修改时间。没有横向运行它们，也没有比较画质、延迟、内存或吞吐；性能栏只记录实现机制。未复制源码、资源、预设，未引入依赖。

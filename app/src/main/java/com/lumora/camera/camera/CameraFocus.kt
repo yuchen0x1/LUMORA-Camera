@@ -15,31 +15,38 @@ internal class CameraFocus(
     private val camera: Camera,
     private val preview: PreviewView,
     private val supportsAutoFocus: Boolean,
-    private val executor: Executor
+    private val executor: Executor,
+    private val elapsedRealtime: () -> Long = SystemClock::elapsedRealtime
 ) {
     private val handler = Handler(Looper.getMainLooper())
     private var tap: PointF? = null
     private var tapTime = 0L
-    private var confirmedAt = 0L
+    private val confirmation = FocusConfirmation(elapsedRealtime)
     private var attempt = 0L
     private val listeners = mutableListOf<(FocusStatus) -> Unit>()
     private var timeout: Runnable? = null
 
+    fun onControlsRequested(controls: ManualControls) {
+        if (confirmation.controlsRequested(controls.focusDiopters)) cancel(resetMetering = true)
+    }
+
     fun tap(x: Float, y: Float, controls: ManualControls, listener: (FocusStatus) -> Unit) {
+        onControlsRequested(controls)
         cancel()
         tap = PointF(x, y)
-        tapTime = SystemClock.elapsedRealtime()
+        tapTime = elapsedRealtime()
         start(x, y, controls, listener)
     }
 
     fun beforeCapture(controls: ManualControls, listener: (FocusStatus) -> Unit) {
-        val now = SystemClock.elapsedRealtime()
+        onControlsRequested(controls)
+        val now = elapsedRealtime()
         if (controls.focusDiopters != null) {
             listener(FocusStatus.UNAVAILABLE)
         } else if (listeners.isNotEmpty()) {
             listeners += listener
             listener(FocusStatus.FOCUSING)
-        } else if (confirmedAt != 0L && now - confirmedAt < 1_200 && tap != null && now - tapTime < 2_500) {
+        } else if (confirmation.isRecent() && tap != null && now - tapTime < 2_500) {
             listener(FocusStatus.FOCUSED)
         } else {
             val target = tap?.takeIf { now - tapTime < 3_000 }
@@ -47,10 +54,10 @@ internal class CameraFocus(
         }
     }
 
-    fun cancel() {
-        if (listeners.isNotEmpty()) runCatching { camera.cameraControl.cancelFocusAndMetering() }
+    fun cancel(resetMetering: Boolean = false) {
+        if (resetMetering || listeners.isNotEmpty()) runCatching { camera.cameraControl.cancelFocusAndMetering() }
         complete(FocusStatus.FAILED)
-        confirmedAt = 0L
+        confirmation.clear()
     }
 
     private fun start(x: Float, y: Float, controls: ManualControls, listener: (FocusStatus) -> Unit) {
@@ -86,7 +93,7 @@ internal class CameraFocus(
                     runCatching { result.get().isFocusSuccessful }.getOrDefault(false) -> FocusStatus.FOCUSED
                     else -> FocusStatus.FAILED
                 }
-                if (status == FocusStatus.FOCUSED) confirmedAt = SystemClock.elapsedRealtime()
+                if (status == FocusStatus.FOCUSED) confirmation.confirm()
                 complete(status)
             }
         }, executor)

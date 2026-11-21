@@ -32,6 +32,7 @@ import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
+import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.lumora.camera.data.PhotoRepository
 import kotlinx.coroutines.CancellationException
@@ -246,6 +247,11 @@ class CameraController(
 
     fun focus(previewView: PreviewView, x: Float, y: Float, onResult: (FocusStatus) -> Unit = {}) {
         if (inFlight != null) return
+        // A completed request still needs its accepted controls published on main.
+        // Failed or pending rollback options must not start AF with stale controls either.
+        if (manualAck?.isCompleted == false || manualRequest?.let {
+                !it.isDone || runCatching { it.get() }.isFailure
+            } == true) return onResult(FocusStatus.UNAVAILABLE)
         val focus = focusControl ?: return onResult(FocusStatus.UNAVAILABLE)
         if (previewView.width <= 0 || previewView.height <= 0) return onResult(FocusStatus.UNAVAILABLE)
         focus.tap(x, y, controls, onResult)
@@ -303,6 +309,8 @@ class CameraController(
         if (validated.awbLock) builder.setCaptureRequestOption(R.CONTROL_AWB_LOCK, true)
         val interop = Camera2CameraControl.from(current.cameraControl)
         val options = builder.build()
+        // Cancel the previous AF action before changing focus mode, even if this request later fails.
+        focusControl?.onControlsRequested(validated)
         val request = runCatching { interop.setCaptureRequestOptions(options) }.getOrElse {
             previousFlash?.let { mode -> imageCapture?.flashMode = mode }
             return onResult(it)
@@ -321,11 +329,17 @@ class CameraController(
                 ensureActive()
                 previousFlash?.let { mode -> imageCapture?.flashMode = mode }
                 // Roll back the entire request bundle. A failed rollback also blocks the next shutter.
-                manualRequest = runCatching { interop.setCaptureRequestOptions(acceptedOptions) }.getOrDefault(request)
+                manualRequest = rollbackManualOptions { interop.setCaptureRequestOptions(acceptedOptions) }
                 onResult(error.cause ?: error)
             }
         }
     }
+
+    internal fun rollbackManualOptions(issue: () -> ListenableFuture<Void?>): ListenableFuture<Void?> =
+        runCatching(issue).getOrElse { error ->
+            // Never fall back to the timed-out original: it may still succeed later.
+            Futures.immediateFailedFuture(error)
+        }
 
     private fun controlResult(onResult: (Throwable?) -> Unit, issue: () -> ListenableFuture<*>) {
         val current = camera

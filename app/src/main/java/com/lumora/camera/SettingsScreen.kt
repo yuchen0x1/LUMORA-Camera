@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.lumora.camera.camera.DeviceCapabilities
 import com.lumora.camera.data.OptimizationStrength
 import com.lumora.camera.data.PhotoRepository
+import com.lumora.camera.ui.CompositionGrid
 import com.lumora.camera.update.UpdateFrequency
 import com.lumora.camera.update.UpdateState
 import com.lumora.camera.update.UpdateViewModel
@@ -34,6 +35,7 @@ internal fun SettingsScreen(
     var previewQuality by remember { mutableStateOf(repository.previewQuality) }
     var strength by remember { mutableStateOf(repository.optimizationStrength) }
     var jpegQuality by remember { mutableIntStateOf(settings.jpegQuality) }
+    var compositionGrid by remember { mutableStateOf(settings.compositionGrid) }
     Column(Modifier.fillMaxSize().background(Background).safeDrawingPadding()) {
         TopAppBar(title = { Text("设置") }, navigationIcon = {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
@@ -51,7 +53,10 @@ internal fun SettingsScreen(
             Toggle("高光与暗部警告", settings::clipping)
             Toggle("对焦峰值", settings::peaking)
             Toggle("水平仪", settings::level)
-            Toggle("黄金分割网格", settings::goldenGrid)
+            Choice("构图网格", compositionGrid.label, CompositionGrid.entries.map { it.label }) { label ->
+                compositionGrid = CompositionGrid.entries.first { it.label == label }
+                settings.compositionGrid = compositionGrid
+            }
             Section("成片")
             Choice("默认优化强度", strength.label, OptimizationStrength.entries.map { it.label }) { label ->
                 strength = OptimizationStrength.entries.first { it.label == label }
