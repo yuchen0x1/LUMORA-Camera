@@ -32,6 +32,11 @@ class CameraWorkflowTest : CameraUiTest() {
         val facts = requireNotNull(first.diagnostics)
         assertTrue(facts, facts.contains("input=${source.width}x${source.height} bytes=${source.bytes} mime=image/jpeg"))
         assertTrue(facts, facts.contains("output=${source.width}x${source.height} "))
+        assertTrue(facts, facts.contains("afOutcome="))
+        assertTrue(facts, facts.contains("captureJpegQuality="))
+        assertTrue(facts, facts.contains("jpegStream="))
+        assertTrue(facts, facts.contains("preparationMs="))
+        assertTrue(facts, facts.contains("previewAF="))
         val sourceDigest = sha256(first.originalUri)
         val firstRenderDigest = sha256(first.enhancedUri)
         // CameraOutput commits the finished record just before it re-enables the gallery.
@@ -117,6 +122,29 @@ class CameraWorkflowTest : CameraUiTest() {
         val street = captureNewPhoto()
         assertJpegPair(street)
         assertTrue(street.diagnostics.orEmpty(), street.diagnostics.orEmpty().contains(" mode=STREET_PROFILE "))
+    }
+
+    @Test
+    fun thirdsGridSurvivesSettingsAndViewfinderRecreation() {
+        val settings = CameraSettings(context)
+        val previous = settings.compositionGrid
+        try {
+            settings.compositionGrid = com.lumora.camera.ui.CompositionGrid.THIRDS
+            compose.activityRule.scenario.recreate()
+            waitForStreamingShutter()
+            control("拍摄工具").tapCenter()
+            compose.onNodeWithText("三分网格").performScrollTo().assertIsSelected()
+            control("收起面板").tapCenter()
+            control("设置").tapCenter()
+            compose.onNodeWithText("构图网格").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("三分网格").assertIsDisplayed()
+            control("返回").tapCenter()
+            waitForStreamingShutter()
+            control("拍摄工具").tapCenter()
+            compose.onNodeWithText("三分网格").performScrollTo().assertIsSelected()
+        } finally {
+            settings.compositionGrid = previous
+        }
     }
 
     @Test

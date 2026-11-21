@@ -9,6 +9,19 @@ data class ManualControls(
     val aeLock: Boolean = false,
     val awbLock: Boolean = false
 ) {
+    /** Keep compatible creative choices after rebind; drop only unsupported controls. */
+    fun forReboundCamera(capabilities: DeviceCapabilities): ManualControls {
+        val exposure = iso != null && exposureTimeNs != null && capabilities.supportsManualExposure
+        val whiteBalance = whiteBalanceMode?.takeIf { it in capabilities.whiteBalanceModes }
+        return copy(
+            iso = iso?.takeIf { exposure }, exposureTimeNs = exposureTimeNs?.takeIf { exposure },
+            whiteBalanceMode = whiteBalance,
+            focusDiopters = focusDiopters?.takeIf { capabilities.supportsManualFocus && it.isFinite() },
+            aeLock = aeLock && !exposure && capabilities.supportsAeLock,
+            awbLock = awbLock && whiteBalance == null && capabilities.supportsAwbLock
+        ).forCamera(capabilities)
+    }
+
     fun forCamera(capabilities: DeviceCapabilities): ManualControls {
         require((iso == null) == (exposureTimeNs == null)) { "手动曝光需要同时指定 ISO 和曝光时间" }
         require(iso == null || capabilities.supportsManualExposure) { "当前相机不支持手动曝光" }

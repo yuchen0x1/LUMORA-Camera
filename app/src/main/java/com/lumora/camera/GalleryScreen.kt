@@ -13,6 +13,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -28,15 +30,17 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
@@ -46,6 +50,9 @@ import com.lumora.camera.data.*
 import com.lumora.camera.image.EnhancementFailure
 import com.lumora.camera.image.PhotoEditParameters
 import com.lumora.camera.image.PhotoEnhancementEngine
+import com.lumora.camera.ui.LumoraThemeTokens
+import com.lumora.camera.ui.ViewfinderTokens
+import com.lumora.camera.ui.safeAreaPadding
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -76,23 +83,40 @@ internal class GallerySession : ViewModel() {
     var busy by mutableStateOf(false)
         private set
     var message by mutableStateOf<String?>(null)
+    var recoveryOpen by mutableStateOf(false)
+        private set
+    var recoveryPreview by mutableStateOf<PhotoIndexRecoveryPreview?>(null)
+        private set
+    var recoveryResult by mutableStateOf<PhotoIndexRecoveryResult?>(null)
+        private set
+    var recoveryError by mutableStateOf<String?>(null)
+        private set
     private val undo = mutableStateListOf<Recipe>()
     private val redo = mutableStateListOf<Recipe>()
     private var sliderStart: Recipe? = null
+    private var initialRecipe: Recipe? = null
     val canUndo get() = undo.isNotEmpty()
     val canRedo get() = redo.isNotEmpty()
+    val hasUnsavedChanges get() = draft != initialRecipe
 
     fun open(record: PhotoRecord?) {
         selected = record
         finishEditing()
     }
 
+    fun closeIfRemoved(record: PhotoRecord) {
+        if (selected?.enhancedUri == record.enhancedUri && draft == null) open(null)
+    }
+
     fun edit(record: PhotoRecord) {
         finishEditing()
-        draft = record.recipe()
+        val recipe = record.recipe()
+        initialRecipe = recipe
+        draft = recipe
     }
 
     fun finishEditing() {
+        initialRecipe = null
         draft = null
         undo.clear()
         redo.clear()
@@ -133,6 +157,9 @@ internal class GallerySession : ViewModel() {
     fun importPhoto(context: Context, repository: PhotoRepository, uri: Uri, presets: List<FilmPreset>) {
         writeVersion {
             val resolver = context.contentResolver
+            // A persisted grant is app-wide, not owned by this import. Never revoke it on
+            // failure/removal: another version, sample, undo token or active render may use it.
+            // Global cleanup requires reference leases shared with the camera/startup owners.
             try {
                 resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             } catch (e: SecurityException) {
@@ -161,6 +188,53 @@ internal class GallerySession : ViewModel() {
             repository.addRecord(version)
             version
         }
+    }
+
+    fun previewRecovery(repository: PhotoRepository) {
+        if (busy) return
+        recoveryOpen = true
+        recoveryPreview = null
+        recoveryResult = null
+        recoveryError = null
+        busy = true
+        viewModelScope.launch {
+            try {
+                recoveryPreview = withContext(Dispatchers.IO) { repository.previewIndexRecovery() }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                recoveryError = "暂时无法检查恢复线索。原始索引和照片未改动，可稍后重试。"
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun restoreRecovery(repository: PhotoRepository) {
+        val preview = recoveryPreview ?: return
+        if (busy || recoveryResult != null || (preview.records.isEmpty() && !preview.writeUnconfirmed)) return
+        recoveryError = null
+        busy = true
+        viewModelScope.launch {
+            try {
+                recoveryResult = withContext(Dispatchers.IO) { repository.restoreIndexRecovery(preview) }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                // A disk-write exception is not proof that the in-memory map was unchanged.
+                recoveryError = "恢复未能确认完成。请重新预览；原始备份和照片文件仍保留。"
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun closeRecovery() {
+        if (busy) return
+        recoveryOpen = false
+        recoveryPreview = null
+        recoveryResult = null
+        recoveryError = null
     }
 
     private fun writeVersion(block: () -> PhotoRecord) {
@@ -201,11 +275,22 @@ internal class GallerySession : ViewModel() {
 
 @Composable
 internal fun GalleryScreen(repository: PhotoRepository, onBack: () -> Unit) {
-    val context = LocalContext.current
     val session: GallerySession = viewModel()
+    GalleryScreen(repository, onBack, session)
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun GalleryScreen(
+    repository: PhotoRepository, onBack: () -> Unit, session: GallerySession
+) {
+    val context = LocalContext.current
     val presets = remember(context) { FilmPresets.load(context) }
     val recordFlow = remember(repository) { repository.observeRecords() }
     val records by recordFlow.collectAsState(initial = emptyList())
+    val recoveryFlow = remember(repository) { repository.observeRecoveryStatus() }
+    val recoveryStatus by recoveryFlow.collectAsState(initial = PhotoIndexRecoveryStatus())
+    var showPrivacy by rememberSaveable { mutableStateOf(false) }
     val selected = session.selected?.let { item ->
         records.find { it.enhancedUri == item.enhancedUri } ?: if (item.sourceOnly) {
             records.find { it.originalUri == item.originalUri && it.parentUri == null } ?: item
@@ -217,60 +302,88 @@ internal fun GalleryScreen(repository: PhotoRepository, onBack: () -> Unit) {
     fun pick() = picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     val snack = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    BackHandler(enabled = selected != null || session.busy) {
-        if (!session.busy) {
-            if (session.draft != null) session.finishEditing() else session.open(null)
-        }
+    BackHandler(enabled = session.draft == null && (selected != null || session.busy)) {
+        if (!session.busy) session.open(null)
     }
     session.message?.let { error ->
         AlertDialog(onDismissRequest = { session.message = null }, title = { Text("处理照片") },
             text = { Text(error) }, confirmButton = { TextButton(onClick = { session.message = null }) { Text("好") } })
     }
+    if (showPrivacy) GalleryPrivacyDialog(onClose = { showPrivacy = false })
+    if (session.recoveryOpen) PhotoIndexRecoveryDialog(session, repository, presets)
     var favoritesOnly by rememberSaveable { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().background(Color(0xFF080808)).safeDrawingPadding()) {
-        if (selected != null) {
-            val draft = session.draft
-            if (draft != null) {
-                EditorPage(selected, presets, session, draft, repository)
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeAreaPadding()) {
+        Column(Modifier.weight(1f).fillMaxWidth()) {
+            if (selected != null) {
+                val draft = session.draft
+                if (draft != null) {
+                    EditorPage(selected, presets, session, draft, repository)
+                } else {
+                    DetailPage(selected, presets, records, session, repository,
+                        onFavorite = {
+                            scope.launch {
+                                try {
+                                    withContext(Dispatchers.IO) { repository.setFavorite(selected.enhancedUri, !selected.favorite) }
+                                } catch (error: IOException) {
+                                    session.message = error.localizedMessage
+                                }
+                            }
+                        },
+                        onRemove = {
+                            scope.launch {
+                                try {
+                                    val removal = withContext(Dispatchers.IO) { repository.removeRecord(selected) }
+                                    session.closeIfRemoved(selected)
+                                    if (removal == null) return@launch
+                                    val reply = snack.showSnackbar("已从作品中移除", "撤销", duration = SnackbarDuration.Long)
+                                    if (reply == SnackbarResult.ActionPerformed) withContext(Dispatchers.IO) { repository.undoRemoval(removal) }
+                                } catch (error: IOException) {
+                                    session.message = error.localizedMessage
+                                }
+                            }
+                        }
+                    )
+                }
             } else {
-                DetailPage(selected, presets, records, session, repository,
-                    onFavorite = {
-                        scope.launch(Dispatchers.IO) { repository.setFavorite(selected.enhancedUri, !selected.favorite) }
-                    },
-                    onDelete = {
-                        scope.launch {
-                            val removal = withContext(Dispatchers.IO) { repository.removeRecord(selected) }
-                            session.open(null)
-                            if (removal == null) return@launch
-                            val reply = snack.showSnackbar("作品已从相册移除", "撤销", duration = SnackbarDuration.Long)
-                            if (reply == SnackbarResult.ActionPerformed) withContext(Dispatchers.IO) { repository.undoRemoval(removal) }
+                Row(Modifier.fillMaxWidth().padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    BackButton(enabled = !session.busy, onClick = onBack)
+                    Text("作品", Modifier.weight(1f), color = Ink, fontSize = 24.sp, fontWeight = FontWeight.Medium)
+                    IconButton(modifier = Modifier.size(48.dp), onClick = { showPrivacy = true }) {
+                        Icon(Icons.Default.PrivacyTip, "照片与隐私")
+                    }
+                    IconButton(modifier = Modifier.size(48.dp), enabled = !session.busy, onClick = ::pick) { Icon(Icons.Default.AddAPhoto, "导入") }
+                }
+                if (session.busy) GalleryProgress(if (session.recoveryOpen) "正在检查或恢复索引…" else "正在导入并处理照片…")
+                if (recoveryStatus.hasEvidence) {
+                    OutlinedCard(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).testTag("index-recovery-notice")) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text("发现作品索引恢复线索", color = Ink, fontWeight = FontWeight.Medium)
+                            Text(if (recoveryStatus.writeUnconfirmed) "上次索引写入尚未确认成功，可预览并重试写入确认。"
+                                else if (recoveryStatus.currentIndexDamaged) "当前索引有无法完整读取的内容，照片文件不会因此删除。"
+                                else "保留了 ${recoveryStatus.backupCount} 份原始索引快照；备份不代表照片一定能恢复。",
+                                color = Muted, fontSize = 13.sp)
+                            TextButton(enabled = !session.busy, onClick = { session.previewRecovery(repository) },
+                                modifier = Modifier.testTag("index-recovery-preview")) { Text("预览恢复") }
                         }
                     }
-                )
-            }
-        } else {
-            Row(Modifier.fillMaxWidth().padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                BackButton(enabled = !session.busy, onClick = onBack)
-                Text("作品", Modifier.weight(1f), color = Ink, fontSize = 24.sp, fontWeight = FontWeight.Medium)
-                IconButton(enabled = !session.busy, onClick = ::pick) { Icon(Icons.Default.AddAPhoto, "导入") }
-            }
-            if (session.busy) {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-                Text("正在导入并处理照片…", Modifier.padding(12.dp), color = Accent)
-            }
-            Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(!favoritesOnly, { favoritesOnly = false }, label = { Text("全部 ${records.size}") })
-                FilterChip(favoritesOnly, { favoritesOnly = true }, label = { Text("收藏 ${records.count { it.favorite }}") })
-            }
-            val visible = if (favoritesOnly) records.filter { it.favorite } else records
-            Box(Modifier.fillMaxSize()) {
+                }
+                FlowRow(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    FilterChip(!favoritesOnly, { favoritesOnly = false }, label = { Text("全部 ${records.size}") },
+                        modifier = Modifier.heightIn(min = 48.dp))
+                    FilterChip(favoritesOnly, { favoritesOnly = true }, label = { Text("收藏 ${records.count { it.favorite }}") },
+                        modifier = Modifier.heightIn(min = 48.dp))
+                }
+                val visible = if (favoritesOnly) records.filter { it.favorite } else records
                 if (visible.isEmpty()) {
-                    Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(if (favoritesOnly) Icons.Default.FavoriteBorder else Icons.Default.PhotoLibrary,
-                            null, tint = Muted, modifier = Modifier.size(36.dp))
-                        Spacer(Modifier.height(12.dp))
-                        Text(if (favoritesOnly) "还没有收藏的作品" else "还没有作品", color = Ink)
-                        if (!favoritesOnly) TextButton(enabled = !session.busy, onClick = ::pick) { Text("导入照片") }
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(if (favoritesOnly) Icons.Default.FavoriteBorder else Icons.Default.PhotoLibrary,
+                                null, tint = Muted, modifier = Modifier.size(36.dp))
+                            Spacer(Modifier.height(12.dp))
+                            Text(if (favoritesOnly) "还没有收藏的作品" else "还没有作品", color = Ink)
+                            if (!favoritesOnly) TextButton(enabled = !session.busy, onClick = ::pick) { Text("导入照片") }
+                        }
                     }
                 } else {
                     LazyVerticalGrid(
@@ -282,28 +395,132 @@ internal fun GalleryScreen(repository: PhotoRepository, onBack: () -> Unit) {
                         items(visible, key = { it.enhancedUri }) { record ->
                             val name = presetName(record, presets)
                             Column(Modifier.testTag("photo-${record.enhancedUri}")
-                                .clickable(enabled = !session.busy) { session.open(record) }) {
+                                .clickable(enabled = !session.busy, onClickLabel = "打开作品", role = Role.Button) {
+                                    session.open(record)
+                                }) {
                                 Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
                                     PhotoPreview(record.enhancedUri, crop = true)
                                     if (record.favorite) Icon(Icons.Default.Favorite, "已收藏",
-                                        Modifier.align(Alignment.TopEnd).padding(6.dp).background(Panel).padding(4.dp).size(16.dp), tint = Accent)
+                                        Modifier.align(Alignment.TopEnd).padding(6.dp).background(ViewfinderTokens.panel)
+                                            .padding(4.dp).size(16.dp), tint = ViewfinderTokens.accent)
                                 }
-                                Text(name, Modifier.padding(top = 5.dp), color = Ink, fontSize = 14.sp,
-                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(name, Modifier.padding(top = 5.dp), color = Ink, fontSize = 14.sp)
                                 Text(formatTime(record.createdAt), color = Muted, fontSize = 12.sp)
                             }
                         }
                     }
                 }
-                SnackbarHost(snack, Modifier.align(Alignment.BottomCenter))
             }
         }
+        SnackbarHost(snack)
     }
 }
 
 @Composable
+private fun GalleryPrivacyDialog(onClose: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text("照片与隐私") },
+        text = {
+            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("LUMORA 在应用内处理照片。导入仅访问你选择的照片，并保留读取权限供再次编辑；不会向 LUMORA 服务器上传照片。云相册提供方可能下载所选照片。")
+                Text("作品索引及恢复快照包含照片 URI、时间、风格和编辑参数，可能随系统应用数据备份保存。恢复只检查已有读取权限，不申请整个相册权限。")
+                Text("从作品中移除只移除索引，不删除照片。读取权限可能仍被其他版本、风格样片、撤销操作或正在进行的编辑使用，目前不会在移除或导入失败时自动撤销共享权限。")
+                Text("如需撤销读取权限，可在系统设置中管理应用权限；不同系统的照片访问管理方式不同。撤销后，相关作品或原图可能无法预览和编辑。恢复快照不会绕过权限，也不保证修复损坏或已删除的照片。")
+            }
+        },
+        confirmButton = { TextButton(onClick = onClose) { Text("知道了") } }
+    )
+}
+
+@Composable
+private fun PhotoIndexRecoveryDialog(session: GallerySession, repository: PhotoRepository, presets: List<FilmPreset>) {
+    val preview = session.recoveryPreview
+    val result = session.recoveryResult
+    AlertDialog(
+        onDismissRequest = session::closeRecovery,
+        title = { Text(if (result == null) "预览索引恢复" else "索引恢复结果") },
+        text = {
+            LazyColumn(Modifier.heightIn(max = 420.dp).testTag("index-recovery-review"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                item {
+                    Text("只补充通过校验且仍可读取的记录，不覆盖现有作品，不删除照片或任何原始快照。备份存在不等于已经修复。")
+                }
+                if (session.busy) item {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text(if (preview == null) "正在检查 JSON 与照片读取状态…" else "正在重新校验并写入…",
+                        Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
+                session.recoveryError?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error) } }
+                if (result != null) {
+                    item {
+                        val text = when (result.outcome) {
+                            PhotoIndexRecoveryOutcome.RESTORED -> "已确认补充 ${result.restoredCount} 项记录。未通过校验的内容仍留在原始快照中；这不是完整修复。"
+                            PhotoIndexRecoveryOutcome.NOTHING_NEW -> "没有新增记录。已存在 ${result.alreadyPresentCount} 项，重新检查时不可读取 ${result.unreadableMediaCount} 项。原始快照仍保留。"
+                            PhotoIndexRecoveryOutcome.STALE_PREVIEW -> "索引或备份已经变化，未按旧预览写入。请重新预览后再确认。"
+                            PhotoIndexRecoveryOutcome.WRITE_NOT_CONFIRMED -> "尚未确认写入成功，不能报告为已恢复。内存中可能已出现新记录，请检查可用空间并重新预览。照片和原始快照未删除。"
+                            PhotoIndexRecoveryOutcome.WRITE_CONFIRMED -> "已确认现有索引写入磁盘。本次未新增记录，不代表所有损坏内容已经修复。原始快照仍保留。"
+                        }
+                        Text(text, Modifier.testTag("index-recovery-result").semantics { liveRegion = LiveRegionMode.Polite })
+                        if (result.outcome == PhotoIndexRecoveryOutcome.RESTORED) {
+                            Text("确认前已存在 ${result.alreadyPresentCount} 项；读取状态变化而跳过 ${result.unreadableMediaCount} 项。", color = Muted)
+                        }
+                    }
+                } else if (preview != null) {
+                    item {
+                        Text("可补充 ${preview.records.size} 项记录", Modifier.testTag("index-recovery-count"), fontWeight = FontWeight.Medium)
+                        Text("检查 ${preview.backupCount} 份备份${if (preview.currentIndexDamaged) "及当前受损索引" else ""}。", color = Muted)
+                        Text("已存在 ${preview.alreadyPresentCount} 项 · 重复 ${preview.duplicateEntryCount} 项 · 相互冲突 ${preview.conflictingRecordCount} 项", color = Muted)
+                        Text("JSON 无法解析 ${preview.malformedSnapshotCount} 份 · 条目无效 ${preview.invalidEntryCount} 项 · 媒体不可读取 ${preview.unreadableMediaCount} 项", color = Muted)
+                        if (preview.records.isEmpty()) Text("本次没有可安全补充的记录。不会猜测残缺 JSON、覆盖旧版本或把不可读取的照片标为恢复成功。")
+                        if (preview.writeUnconfirmed) Text("上次写入尚未确认。本次可重试把当前内存中的索引写入磁盘，不会把它算成新增恢复。")
+                    }
+                    items(preview.records, key = { it.enhancedUri }) { record ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(56.dp)) { PhotoPreview(record.enhancedUri, crop = true) }
+                            Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                                Text(presetName(record, presets), fontWeight = FontWeight.Medium)
+                                Text(formatTime(record.createdAt), color = Muted, fontSize = 12.sp)
+                                Text(if (record.parentUri == null) "来源与成片可读取" else "另存版本 · 来源与成片可读取", color = Muted, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+                item {
+                    Text("此检查在应用内读取 URI 与小尺寸图像，不上传照片；云提供方可能下载媒体。恢复只补充索引，不重新生成照片，也不保证之后的全分辨率编辑一定成功。", color = Muted, fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            if (result == null && session.recoveryError == null) {
+                TextButton(enabled = !session.busy && preview != null && (preview.records.isNotEmpty() || preview.writeUnconfirmed),
+                    modifier = Modifier.testTag("index-recovery-confirm"), onClick = { session.restoreRecovery(repository) }) {
+                    Text(if (preview == null) "正在检查" else if (preview.records.isEmpty() && preview.writeUnconfirmed) "重试写入确认"
+                        else "补充 ${preview.records.size} 项记录")
+                }
+            } else {
+                TextButton(enabled = !session.busy, onClick = session::closeRecovery) { Text("关闭") }
+            }
+        },
+        dismissButton = {
+            if (result != null || session.recoveryError != null) {
+                TextButton(enabled = !session.busy, onClick = { session.previewRecovery(repository) }) { Text("重新预览") }
+            } else {
+                TextButton(enabled = !session.busy, onClick = session::closeRecovery) { Text("暂不恢复") }
+            }
+        }
+    )
+}
+
+@Composable
+private fun GalleryProgress(label: String) {
+    LinearProgressIndicator(Modifier.fillMaxWidth())
+    Text(label, Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+        .semantics { liveRegion = LiveRegionMode.Polite }, color = Accent)
+}
+
+@Composable
 private fun BackButton(enabled: Boolean = true, onClick: () -> Unit) {
-    IconButton(enabled = enabled, onClick = onClick) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
+    IconButton(modifier = Modifier.size(48.dp), enabled = enabled, onClick = onClick) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
 }
 
 private fun presetName(record: PhotoRecord, presets: List<FilmPreset>) =
@@ -315,12 +532,14 @@ private val previewSlots = Semaphore(3)
 
 @Composable
 private fun PhotoPreview(
-    uri: String, crop: Boolean = false, preset: FilmPreset? = null, recipe: Recipe? = null
+    uri: String, crop: Boolean = false, preset: FilmPreset? = null, recipe: Recipe? = null,
+    description: String? = null
 ) {
     val resolver = LocalContext.current.contentResolver
-    BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xFF141414)), contentAlignment = Alignment.Center) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(LumoraThemeTokens.photoMatte), contentAlignment = Alignment.Center) {
         val edge = maxOf(constraints.maxWidth, constraints.maxHeight).coerceIn(1, 1440)
-        key(uri, edge) {
+        // Keep the last frame during adjustments, but never show it on the other side of the comparison.
+        key(uri, edge, recipe != null) {
             var image by remember { mutableStateOf<Bitmap?>(null) }
             var loading by remember { mutableStateOf(true) }
             LaunchedEffect(preset, recipe) {
@@ -335,14 +554,23 @@ private fun PhotoPreview(
                 }
                 loading = false
             }
-            image?.let { Image(it.asImageBitmap(), null, Modifier.fillMaxSize(),
+            image?.let { Image(it.asImageBitmap(), description, Modifier.fillMaxSize(),
                 contentScale = if (crop) ContentScale.Crop else ContentScale.Fit) }
+            val loadingSemantics = if (description == null) Modifier else Modifier.semantics {
+                contentDescription = "正在加载$description"
+                liveRegion = LiveRegionMode.Polite
+            }
             if (loading && image != null) {
-                LinearProgressIndicator(Modifier.align(Alignment.TopCenter).fillMaxWidth())
+                LinearProgressIndicator(Modifier.align(Alignment.TopCenter).fillMaxWidth().then(loadingSemantics))
             }
             if (image == null) {
-                if (loading) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-                else Text("预览不可用", color = Muted, fontSize = 13.sp)
+                if (loading) {
+                    CircularProgressIndicator(Modifier.size(22.dp).then(loadingSemantics), strokeWidth = 2.dp)
+                } else {
+                    Text("预览不可用", Modifier.background(ViewfinderTokens.panel).padding(horizontal = 8.dp, vertical = 4.dp)
+                        .semantics { if (description != null) liveRegion = LiveRegionMode.Polite },
+                        color = ViewfinderTokens.ink, fontSize = 13.sp)
+                }
             }
         }
     }
@@ -367,48 +595,59 @@ private fun PhotoLayout(preview: @Composable () -> Unit, tools: @Composable Colu
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DetailPage(
     record: PhotoRecord, presets: List<FilmPreset>, records: List<PhotoRecord>, session: GallerySession, repository: PhotoRepository,
-    onFavorite: () -> Unit, onDelete: () -> Unit
+    onFavorite: () -> Unit, onRemove: () -> Unit
 ) {
     val context = LocalContext.current
     var before by rememberSaveable(record.enhancedUri) { mutableStateOf(false) }
-    var confirmDelete by remember { mutableStateOf(false) }
+    var confirmRemove by remember { mutableStateOf(false) }
     val sourceLabel = if (record.sourceIsRendered) "来源图" else "原图"
+    val previewLabel = if (record.sourceOnly || before) sourceLabel else "成片"
     val uri = if (before) record.originalUri else record.enhancedUri
-    if (confirmDelete) {
-        AlertDialog(onDismissRequest = { confirmDelete = false }, title = { Text("从作品中移除？") },
+    if (confirmRemove) {
+        AlertDialog(onDismissRequest = { confirmRemove = false }, title = { Text("从作品中移除？") },
             text = { Text("照片文件会保留在原来的位置。") },
-            confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete() }) { Text("移除") } },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("取消") } })
+            confirmButton = { TextButton(onClick = { confirmRemove = false; onRemove() }) { Text("移除") } },
+            dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text("取消") } })
     }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         BackButton { session.open(null) }
-        Text(if (record.sourceOnly || before) sourceLabel else "成片", Modifier.weight(1f), color = Ink, fontSize = 20.sp)
-        IconButton(onClick = onFavorite) {
-            Icon(if (record.favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                if (record.favorite) "取消收藏作品" else "收藏作品", tint = if (record.favorite) Accent else Ink)
-        }
-        IconButton(onClick = {
-            try {
-                val photo = Uri.parse(uri)
-                val send = Intent(Intent.ACTION_SEND).apply {
-                    type = context.contentResolver.getType(photo) ?: "image/*"
-                    putExtra(Intent.EXTRA_STREAM, photo)
-                    clipData = ClipData.newRawUri("照片", photo)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(previewLabel, Modifier.align(Alignment.CenterVertically).heightIn(min = 48.dp)
+                .wrapContentHeight(Alignment.CenterVertically), color = Ink, fontSize = 20.sp)
+            Row(Modifier.align(Alignment.CenterVertically)) {
+                IconButton(modifier = Modifier.size(48.dp), onClick = onFavorite) {
+                    Icon(if (record.favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        if (record.favorite) "取消收藏作品" else "收藏作品", tint = if (record.favorite) Accent else Ink)
                 }
-                context.startActivity(Intent.createChooser(send, "分享照片"))
-            } catch (_: Exception) { session.message = "无法分享这张照片，请检查读取权限。" }
-        }) { Icon(Icons.Default.Share, "分享") }
-        IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Default.Delete, "删除") }
+                IconButton(modifier = Modifier.size(48.dp), onClick = {
+                    try {
+                        val photo = Uri.parse(uri)
+                        val send = Intent(Intent.ACTION_SEND).apply {
+                            type = context.contentResolver.getType(photo) ?: "image/*"
+                            putExtra(Intent.EXTRA_STREAM, photo)
+                            clipData = ClipData.newRawUri("照片", photo)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(send, "分享照片"))
+                    } catch (_: Exception) { session.message = "无法分享这张照片，请检查读取权限。" }
+                }) { Icon(Icons.Default.Share, "分享") }
+                IconButton(modifier = Modifier.size(48.dp), onClick = { confirmRemove = true }) {
+                    Icon(Icons.Default.Delete, "删除")
+                }
+            }
+        }
     }
-    PhotoLayout(preview = { PhotoPreview(uri) }) {
+    PhotoLayout(preview = { PhotoPreview(uri, description = previewLabel) }) {
         if (record.originalUri != record.enhancedUri) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(before, { before = true }, label = { Text(sourceLabel) }, modifier = Modifier.testTag("detail-before"))
-                FilterChip(!before, { before = false }, label = { Text("成片") }, modifier = Modifier.testTag("detail-after"))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                FilterChip(before, { before = true }, label = { Text(sourceLabel) }, modifier = Modifier.heightIn(min = 48.dp).testTag("detail-before"))
+                FilterChip(!before, { before = false }, label = { Text("成片") }, modifier = Modifier.heightIn(min = 48.dp).testTag("detail-after"))
             }
         }
         Text(presetName(record, presets), color = Ink, fontSize = 22.sp, fontWeight = FontWeight.Medium)
@@ -419,9 +658,13 @@ private fun DetailPage(
             color = Muted, fontSize = 13.sp)
         if (record.sourceIsRendered) Text("旧版本仅保留了成片，继续编辑将以它为来源。", color = Muted, fontSize = 12.sp)
         val parent = records.find { it.enhancedUri == record.parentUri }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { session.edit(record) }) { Icon(Icons.Default.Tune, null); Spacer(Modifier.width(6.dp)); Text("编辑") }
-            if (parent != null) TextButton(onClick = { session.open(parent) }) { Text("查看上一版本") }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Button(onClick = { session.edit(record) }, modifier = Modifier.align(Alignment.CenterVertically)) {
+                Icon(Icons.Default.Tune, null); Spacer(Modifier.width(6.dp)); Text("编辑")
+            }
+            if (parent != null) TextButton(onClick = { session.open(parent) },
+                modifier = Modifier.align(Alignment.CenterVertically)) { Text("查看上一版本") }
         }
         var customSample by remember(record.originalUri) { mutableStateOf(repository.styleSampleUri == record.originalUri) }
         TextButton(onClick = {
@@ -452,6 +695,7 @@ private enum class Adjustment(val label: String, val range: ClosedFloatingPointR
     Vignette("暗角", 0f..1f, { it.vignette }, { p, v -> p.copy(vignette = v) })
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun EditorPage(
     record: PhotoRecord, presets: List<FilmPreset>, session: GallerySession, recipe: Recipe,
@@ -460,92 +704,140 @@ private fun EditorPage(
     val context = LocalContext.current.applicationContext
     val selected = presets.find { it.id == recipe.styleId } ?: presets.find { it.id == "natural" } ?: presets.first()
     var before by rememberSaveable(record.enhancedUri) { mutableStateOf(false) }
+    var confirmDiscard by rememberSaveable(record.enhancedUri) { mutableStateOf(false) }
     val interactive = !session.busy
+    fun requestClose() {
+        if (session.busy) return
+        if (session.hasUnsavedChanges) confirmDiscard = true else session.finishEditing()
+    }
+    BackHandler { requestClose() }
+    if (confirmDiscard) {
+        AlertDialog(
+            onDismissRequest = { confirmDiscard = false },
+            title = { Text("放弃未保存的修改？") },
+            text = { Text("尚未保存为新版本的修改将丢失，原作品不受影响。") },
+            confirmButton = { TextButton(enabled = interactive, modifier = Modifier.testTag("editor-discard"),
+                onClick = { confirmDiscard = false; session.finishEditing() }) { Text("放弃修改") } },
+            dismissButton = { TextButton(onClick = { confirmDiscard = false }, modifier = Modifier.testTag("editor-keep-editing")) { Text("继续编辑") } }
+        )
+    }
     Row(Modifier.fillMaxWidth().padding(end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(enabled = interactive, onClick = session::finishEditing) { Icon(Icons.Default.Close, "取消") }
-        Spacer(Modifier.weight(1f))
-        IconButton(enabled = interactive && session.canUndo, onClick = session::undo) {
-            Icon(Icons.AutoMirrored.Filled.Undo, "撤销调整")
-        }
-        IconButton(enabled = interactive && session.canRedo, onClick = session::redo) {
-            Icon(Icons.AutoMirrored.Filled.Redo, "重做调整")
-        }
-        Button(enabled = interactive, onClick = { session.save(context, repository, record, selected) }) {
-            Text(if (session.busy) "正在保存…" else "保存新版本")
+        IconButton(modifier = Modifier.size(48.dp), enabled = interactive, onClick = ::requestClose) { Icon(Icons.Default.Close, "取消") }
+        FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.End,
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.align(Alignment.CenterVertically)) {
+                IconButton(modifier = Modifier.size(48.dp), enabled = interactive && session.canUndo, onClick = { session.undo(); before = false }) {
+                    Icon(Icons.AutoMirrored.Filled.Undo, "撤销调整")
+                }
+                IconButton(modifier = Modifier.size(48.dp), enabled = interactive && session.canRedo, onClick = { session.redo(); before = false }) {
+                    Icon(Icons.AutoMirrored.Filled.Redo, "重做调整")
+                }
+            }
+            Button(enabled = interactive, onClick = { session.save(context, repository, record, selected) },
+                modifier = Modifier.align(Alignment.CenterVertically)) {
+                Text("保存新版本")
+            }
         }
     }
-    if (session.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+    if (session.busy) GalleryProgress("正在保存…")
+    val sourceLabel = if (record.sourceIsRendered) "来源图" else "原图"
     PhotoLayout(preview = {
-        PhotoPreview(record.originalUri, preset = selected.takeUnless { before }, recipe = recipe.takeUnless { before })
+        PhotoPreview(record.originalUri, preset = selected.takeUnless { before }, recipe = recipe.takeUnless { before },
+            description = if (before) sourceLabel else "调整后")
     }) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            FilterChip(before, { before = true }, label = { Text(if (record.sourceIsRendered) "来源图" else "原图") })
-            FilterChip(!before, { before = false }, label = { Text("调整后") })
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            FilterChip(before, { before = true }, enabled = interactive, label = { Text(sourceLabel) },
+                modifier = Modifier.heightIn(min = 48.dp))
+            FilterChip(!before, { before = false }, enabled = interactive, label = { Text("调整后") },
+                modifier = Modifier.heightIn(min = 48.dp))
+        }
+        if (record.sourceIsRendered) {
+            Text("此来源已包含旧版处理。继续编辑是在它上面叠加，无法用风格强度 0% 撤销之前的处理。", color = Muted, fontSize = 12.sp)
+        } else if (record.sourceOnly) {
+            Text("正在预览本次自动优化与风格；保存新版本才会生成成片，来源照片保持不变。", color = Muted, fontSize = 12.sp)
         }
         var styleMenu by remember { mutableStateOf(false) }
         var favorites by remember { mutableStateOf(repository.favoriteStyleIds) }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("风格", Modifier.weight(1f), color = Muted, fontSize = 14.sp)
-            Box {
-                TextButton(enabled = interactive, onClick = { styleMenu = true }) {
-                    Text(selected.name, color = Ink)
-                    Icon(Icons.Default.ArrowDropDown, null)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("风格", color = Muted, fontSize = 14.sp, modifier = Modifier.padding(end = 4.dp))
+            Box(Modifier.weight(1f)) {
+                TextButton(enabled = interactive, onClick = { styleMenu = true }, modifier = Modifier.fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(selected.name, color = if (interactive) Ink else LocalContentColor.current,
+                            modifier = Modifier.weight(1f))
+                        Icon(Icons.Default.ArrowDropDown, null)
+                    }
                 }
                 DropdownMenu(styleMenu, { styleMenu = false }) {
                     presets.sortedByDescending { it.id in favorites }.forEach { preset ->
+                        val isSelected = preset.id == selected.id
                         DropdownMenuItem(
                             text = { Text(preset.name) },
                             leadingIcon = if (preset.id in favorites) { { Icon(Icons.Default.Star, null, tint = Accent) } } else null,
+                            trailingIcon = if (isSelected) { { Icon(Icons.Default.Check, null) } } else null,
+                            modifier = Modifier.semantics { this.selected = isSelected },
                             onClick = { styleMenu = false; session.change(recipe.copy(styleId = preset.id)); before = false }
                         )
                     }
                 }
             }
-            IconButton(enabled = interactive, onClick = {
+            IconButton(modifier = Modifier.size(48.dp), enabled = interactive, onClick = {
                 repository.setStyleFavorite(selected.id, selected.id !in favorites)
                 favorites = repository.favoriteStyleIds
             }) {
                 Icon(if (selected.id in favorites) Icons.Default.Star else Icons.Default.StarBorder,
-                    if (selected.id in favorites) "取消收藏风格" else "收藏风格", tint = Accent)
+                    if (selected.id in favorites) "取消收藏风格" else "收藏风格",
+                    tint = if (interactive) Accent else LocalContentColor.current)
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("风格强度", Modifier.weight(1f), color = Muted, fontSize = 14.sp)
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("风格强度", color = Muted, fontSize = 14.sp)
             Text("${(recipe.intensity * 100).roundToInt()}%", color = Ink)
         }
         Slider(value = recipe.intensity, enabled = interactive, onValueChange = {
             before = false
             session.change(recipe.copy(intensity = it), sliding = true)
         }, onValueChangeFinished = session::finishSlide,
-            modifier = Modifier.testTag("editor-intensity").semantics { contentDescription = "风格强度" })
+            modifier = Modifier.heightIn(min = 48.dp).testTag("editor-intensity").semantics { contentDescription = "风格强度" })
+        Text("0% 仅关闭本次风格；自动优化和手动调整仍会应用。", color = Muted, fontSize = 12.sp)
         Text("自动优化", color = Muted, fontSize = 14.sp)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
             OptimizationStrength.entries.forEach { level ->
                 FilterChip(recipe.strength == level, {
                     before = false
                     session.change(recipe.copy(strength = level))
                 }, enabled = interactive, label = { Text(level.label) },
-                    modifier = Modifier.testTag("editor-strength-${level.name}"))
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("editor-strength-${level.name}"))
             }
         }
         var adjustment by rememberSaveable { mutableStateOf(Adjustment.Exposure) }
         var adjustmentMenu by remember { mutableStateOf(false) }
         val value = adjustment.read(recipe.edits)
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box {
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Box(Modifier.weight(1f).align(Alignment.CenterVertically)) {
                 TextButton(enabled = interactive, onClick = { adjustmentMenu = true }) {
-                    Text(adjustment.label); Icon(Icons.Default.ArrowDropDown, "选择调整项")
+                    Text(adjustment.label)
+                    Icon(Icons.Default.ArrowDropDown, "选择调整项")
                 }
                 DropdownMenu(adjustmentMenu, { adjustmentMenu = false }) {
                     Adjustment.entries.forEach { item ->
-                        DropdownMenuItem(text = { Text(item.label) }, onClick = { adjustment = item; adjustmentMenu = false })
+                        val isSelected = item == adjustment
+                        DropdownMenuItem(
+                            text = { Text(item.label) },
+                            trailingIcon = if (isSelected) { { Icon(Icons.Default.Check, null) } } else null,
+                            modifier = Modifier.semantics { this.selected = isSelected },
+                            onClick = { adjustment = item; adjustmentMenu = false }
+                        )
                     }
                 }
             }
-            Spacer(Modifier.weight(1f))
             Text(if (adjustment == Adjustment.Exposure) String.format(Locale.getDefault(), "%+.2f EV", value)
-                else "${(value * 100).roundToInt()}", color = Ink)
+                else "${(value * 100).roundToInt()}", Modifier.align(Alignment.CenterVertically), color = Ink)
         }
         Slider(value = value, enabled = interactive, valueRange = adjustment.range,
             onValueChange = {

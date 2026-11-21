@@ -9,6 +9,7 @@ import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
 import androidx.camera.extensions.ExtensionMode
 import androidx.camera.extensions.ExtensionsManager
 
@@ -27,12 +28,24 @@ class DeviceCapabilityManager(context: Context) {
         return LensOption(camera2.cameraId, facingName(info.lensFacing), focal?.filter { it.isFinite() && it > 0f }.orEmpty(), calibratedFocus)
     }
 
+    internal fun rawAvailability(baseInfo: CameraInfo, sessionFailed: Boolean = false): RawAvailability {
+        val supportsOutput = runCatching {
+            ImageCapture.OUTPUT_FORMAT_RAW in ImageCapture.getImageCaptureCapabilities(baseInfo).supportedOutputFormats
+        }.getOrDefault(false)
+        return when {
+            !supportsOutput -> RawAvailability.UNSUPPORTED
+            sessionFailed -> RawAvailability.SESSION_UNAVAILABLE
+            else -> RawAvailability.AVAILABLE
+        }
+    }
+
     fun snapshot(
         info: CameraInfo,
         lens: LensOption,
         lenses: List<LensOption>,
         extensions: Set<Int>,
-        extensionActive: Boolean
+        extensionActive: Boolean,
+        rawAvailability: RawAvailability = rawAvailability(info)
     ): DeviceCapabilities {
         val c = runCatching { manager.getCameraCharacteristics(lens.id) }.getOrNull()
         fun <T> read(key: C.Key<T>): T? = runCatching { c?.get(key) }.getOrNull()
@@ -75,6 +88,7 @@ class DeviceCapabilityManager(context: Context) {
             whiteBalanceModes = if (extensionActive || R.CONTROL_AWB_MODE !in requestKeys) emptyList() else
                 read(C.CONTROL_AWB_AVAILABLE_MODES).orEmptyInts().filter { it != R.CONTROL_AWB_MODE_OFF },
             supportsRaw = C.REQUEST_AVAILABLE_CAPABILITIES_RAW in capabilities,
+            rawAvailability = rawAvailability,
             supportsOpticalStabilization = R.LENS_OPTICAL_STABILIZATION_MODE_ON in read(C.LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION).orEmptyInts(),
             supportsVideoStabilization = R.CONTROL_VIDEO_STABILIZATION_MODE_ON in read(C.CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES).orEmptyInts(),
             hardwareLevel = when (read(C.INFO_SUPPORTED_HARDWARE_LEVEL)) {

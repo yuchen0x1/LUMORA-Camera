@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Preserve gallery/source settings, the full index and recordsRecovery.* snapshots. -->
+    <include domain="sharedpref" path="lumora_preferences.xml" />
+    <!-- Preserve the user's automatic-update choice, but not transient device-local work.
+         Restoring in-flight MediaStore IDs could reconcile an unrelated photo on a new device.
+         Only the two included files are backed up, so lumora_capture_journal.xml is excluded
+         without clearing the local journal or disabling process-death recovery. -->
+    <include domain="sharedpref" path="lumora_updates.xml" />
+    <!-- This allowlist excludes future private files and update APKs (cache is never backed up).
+         Photos in MediaStore/Pictures/LUMORA are outside app backup; these rules do not
+         migrate media bytes or recreate provider URI grants on another device. -->
+</full-backup-content>

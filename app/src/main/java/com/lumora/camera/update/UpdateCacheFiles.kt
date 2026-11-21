@@ -6,19 +6,30 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
 
+/** Opaque, in-memory capability for one verified cache file. */
+internal class UpdateInstallLease internal constructor()
+
 /**
  * Owns only files allocated by this client, with fresh paths for every attempt.
  * Previously verified paths stay immutable until explicit clear, even on client reuse.
+ * Active installer leases defer deletion after clear until their matching result is received.
  * Never sweep the directory: another client or an installer may still be using it.
  * Files orphaned by process death (including legacy paths) are left to cache eviction.
  */
 internal class UpdateCacheFiles(private val cacheDir: File) {
-    private class Session(val partial: File, val verified: File, var promoted: Boolean = false)
+    private class Session(
+        val partial: File,
+        val verified: File,
+        var promoted: Boolean = false,
+        var leases: Int = 0,
+        var retired: Boolean = false
+    )
 
     private val lock = Any()
     private val directory = File(cacheDir, "verified-update")
     private val owned = mutableSetOf<Session>()
     private val verified = mutableListOf<Session>()
+    private val leases = mutableMapOf<UpdateInstallLease, Session>()
     private var generation = 0L
 
     // The caller must finish all download and archive verification before returning.
@@ -55,7 +66,9 @@ internal class UpdateCacheFiles(private val cacheDir: File) {
                     if (!succeeded) {
                         owned.remove(attempt)
                         verified.remove(attempt)
-                        if (attempt.promoted) attempt.verified.delete()
+                        // An installer may acquire the lease after promotion but before
+                        // cancellation reaches this rollback boundary.
+                        if (attempt.promoted && attempt.leases == 0) attempt.verified.delete()
                     }
                 }
             }
@@ -66,14 +79,38 @@ internal class UpdateCacheFiles(private val cacheDir: File) {
         verified.lastOrNull()?.verified ?: throw UpdateFailure("安装包不完整，请重新下载")
     }
 
+    fun acquireInstallLease(): UpdateInstallLease = synchronized(lock) {
+        val session = verified.lastOrNull()?.takeIf { it.verified.isFile }
+            ?: throw UpdateFailure("安装包不完整，请重新下载")
+        UpdateInstallLease().also { lease ->
+            session.leases++
+            leases[lease] = session
+        }
+    }
+
+    fun leasedFile(lease: UpdateInstallLease): File = synchronized(lock) {
+        leases[lease]?.verified ?: throw UpdateFailure("安装会话已结束，请重新下载")
+    }
+
+    fun releaseInstallLease(lease: UpdateInstallLease): Boolean = synchronized(lock) {
+        val session = leases.remove(lease) ?: return@synchronized false
+        session.retired = true
+        session.leases--
+        owned.remove(session)
+        verified.remove(session)
+        if (session.leases == 0 && session.promoted) session.verified.delete()
+        true
+    }
+
     fun clear() = synchronized(lock) {
         generation++
         val sessions = owned.toList()
         owned.clear()
         verified.clear()
-        sessions.forEach {
-            it.partial.delete()
-            if (it.promoted) it.verified.delete()
+        sessions.forEach { session ->
+            session.retired = true
+            session.partial.delete()
+            if (session.promoted && session.leases == 0) session.verified.delete()
         }
     }
 

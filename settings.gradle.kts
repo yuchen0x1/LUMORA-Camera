@@ -49,7 +49,10 @@ gradle.beforeProject {
             }
         }
     }
-    buildscript.configurations.configureEach { resolutionStrategy.eachDependency(securityFloor) }
+    buildscript.configurations.configureEach {
+        resolutionStrategy.eachDependency(securityFloor)
+        if (name == "classpath") resolutionStrategy.activateDependencyLocking()
+    }
     configurations.configureEach { resolutionStrategy.eachDependency(securityFloor) }
 }
 

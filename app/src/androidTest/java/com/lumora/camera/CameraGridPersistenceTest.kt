@@ -2,6 +2,7 @@ package com.lumora.camera
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
@@ -24,7 +25,7 @@ class CameraGridPersistenceTest : CameraUiTest() {
             compose.onNodeWithText("黄金分割").performScrollTo().assertIsSelected()
 
             compose.onNodeWithText("直方图").performScrollTo().tapCenter()
-            compose.onNodeWithText("直方图").assertIsSelected()
+            compose.onNodeWithText("直方图").assertIsOn()
             compose.runOnIdle {
                 assertTrue(prefs.getBoolean("histogram", false))
                 assertEquals("future-grid", prefs.getString("compositionGrid", null))

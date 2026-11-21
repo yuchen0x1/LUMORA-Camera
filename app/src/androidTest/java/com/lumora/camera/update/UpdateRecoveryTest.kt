@@ -2,6 +2,7 @@ package com.lumora.camera.update
 
 import android.app.Application
 import android.content.Intent
+import androidx.activity.result.ActivityResult
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -151,13 +152,66 @@ class UpdateRecoveryTest {
     @Test fun returningFromInstallerCleansUpAndAllowsRecheck() {
         ready()
         var launched = false
-        main { model.install(offer) { launched = true } }
+        var sessionId: String? = null
+        main { model.install(offer) { launch -> sessionId = launch.sessionId; launched = true } }
         await { launched }
-        main { model.installationReturned() }
+        assertEquals(UpdateState.Installing(offer, requireNotNull(sessionId), InstallPhase.WAITING_FOR_RESULT), model.state)
+        main { model.installationReturned(requireNotNull(sessionId), ActivityResult(0, null)) }
+        assertEquals(1, client.releases)
         assertEquals(1, client.clears)
         assertTrue((model.state as UpdateState.Notice).retryable)
         main { model.check(manual = true) }
         await { model.state is UpdateState.Available }
+    }
+
+    @Test fun unmatchedAndLateResultsCannotClearAReadyOrNewSession() {
+        ready()
+        var launched = false
+        var sessionId: String? = null
+        main { model.install(offer) { launch -> sessionId = launch.sessionId; launched = true } }
+        await { launched }
+        main { model.installationReturned("not-${requireNotNull(sessionId)}", ActivityResult(0, null)) }
+        assertEquals(0, client.releases)
+        assertEquals(UpdateState.Installing(offer, requireNotNull(sessionId), InstallPhase.WAITING_FOR_RESULT), model.state)
+
+        main { model.later(offer) }
+        assertEquals(UpdateState.Idle, model.state)
+        assertEquals(1, client.clears)
+        main { model.installationReturned(requireNotNull(sessionId), ActivityResult(0, null)) }
+        assertEquals(1, client.releases)
+        assertEquals(UpdateState.Idle, model.state)
+
+        ready()
+        main { model.installationReturned(requireNotNull(sessionId), ActivityResult(0, null)) }
+        assertEquals(UpdateState.Ready(offer), model.state)
+        assertEquals(1, client.clears)
+        assertEquals(1, client.releases)
+    }
+
+    @Test fun resultDuringPreinstallVerificationIsIgnoredAndCancellationReleasesLease() {
+        ready()
+        val release = CompletableDeferred<Unit>()
+        val finished = CompletableDeferred<Unit>()
+        client.installResult = {
+            try {
+                release.await()
+                Intent(Intent.ACTION_VIEW)
+            } finally { finished.complete(Unit) }
+        }
+        var launched = false
+        main { model.install(offer) { launched = true } }
+        await { model.state is UpdateState.Installing }
+        val sessionId = (model.state as UpdateState.Installing).sessionId
+        main { model.installationReturned(sessionId, ActivityResult(0, null)) }
+        assertEquals(0, client.releases)
+        assertEquals(InstallPhase.VERIFYING, (model.state as UpdateState.Installing).phase)
+        main { model.later(offer) }
+        await { finished.isCompleted && client.releases == 1 }
+        instrumentation.waitForIdleSync()
+        assertFalse(launched)
+        assertEquals(UpdateState.Idle, model.state)
+        assertEquals(1, client.clears)
+        assertEquals(1, client.releases)
     }
 
     @Test fun choosingLaterDuringVerificationNeverLaunchesAnInstallerAfterDismissal() {
@@ -232,13 +286,27 @@ class UpdateRecoveryTest {
         override val versionName = "2.1.3"
         var checks = 0
         var clears = 0
+        var releases = 0
+        private val leases = mutableSetOf<UpdateInstallLease>()
         var checkResult: suspend () -> UpdateOffer? = { null }
         var downloadResult: suspend () -> Unit = {}
         var installResult: suspend () -> Intent = { Intent(Intent.ACTION_VIEW) }
         override suspend fun check(): UpdateOffer? { checks++; return checkResult() }
         override fun incompatibility(offer: UpdateOffer): String? = null
         override suspend fun download(offer: UpdateOffer, progress: (Long) -> Unit) = downloadResult()
-        override suspend fun installIntent(offer: UpdateOffer): Intent = installResult()
+        override suspend fun installIntent(offer: UpdateOffer): UpdateInstall {
+            val prepared = UpdateInstall(Intent(Intent.ACTION_VIEW), UpdateInstallLease())
+            leases.add(prepared.lease)
+            return try {
+                prepared.copy(intent = installResult())
+            } catch (error: Throwable) {
+                releaseInstall(prepared)
+                throw error
+            }
+        }
+        override fun releaseInstall(install: UpdateInstall) {
+            if (leases.remove(install.lease)) releases++
+        }
         override fun clearDownloaded() { clears++ }
     }
 

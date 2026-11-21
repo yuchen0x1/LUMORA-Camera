@@ -143,6 +143,25 @@ class AndroidUpdaterFilesTest {
         assertNoReady(files)
     }
 
+    @Test fun clearRetiresButKeepsLeasedVerifiedFileUntilMatchingRelease() = runBlocking {
+        val files = store()
+        val foreign = store()
+        val ready = publish(files, firstBytes)
+        val lease = files.acquireInstallLease()
+        assertEquals(ready, files.leasedFile(lease))
+
+        files.clear()
+        assertNoReady(files)
+        assertTrue(ready.isFile)
+        assertArrayEquals(firstBytes, ready.readBytes())
+        assertFalse("A different cache owner must not release this lease", foreign.releaseInstallLease(lease))
+        assertTrue(ready.isFile)
+
+        assertTrue(files.releaseInstallLease(lease))
+        assertFalse(ready.exists())
+        assertFalse(files.releaseInstallLease(lease))
+    }
+
     @Test fun failedReplacementCleansPartialWithoutRemovingPreviousReady() = runBlocking {
         val files = store()
         val previous = publish(files, firstBytes)

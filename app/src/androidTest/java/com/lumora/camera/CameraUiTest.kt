@@ -4,12 +4,15 @@ import android.Manifest
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
 import androidx.camera.view.PreviewView
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
@@ -22,21 +25,65 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
 import com.lumora.camera.data.PhotoRecord
 import com.lumora.camera.data.PhotoRepository
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import java.security.MessageDigest
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.rules.RuleChain
 
+@OptIn(ExperimentalTestApi::class)
 abstract class CameraUiTest {
-    protected val compose = createAndroidComposeRule<MainActivity>()
+    // Keep IO-triggered composition effects on the Android main thread.
+    private val mainScheduler = TestCoroutineScheduler()
+    protected val compose = createAndroidComposeRule<MainActivity>(
+        effectContext = StandardTestDispatcher(mainScheduler)
+    )
+    private val clockHandler = Handler(Looper.getMainLooper())
+    private var clockRunning = false
+    private val clockFrame = object : Runnable {
+        override fun run() {
+            if (!clockRunning) return
+            // Compose 1.7.6 scroll actions can queue work without advancing its test clock.
+            // Respect manual countdown tests; only auto-advance on the Android main looper.
+            if (compose.mainClock.autoAdvance) compose.mainClock.advanceTimeByFrame()
+            if (clockRunning) clockHandler.postDelayed(this, 16L)
+        }
+    }
     protected val context: Context get() = InstrumentationRegistry.getInstrumentation().targetContext
     protected val repository by lazy { PhotoRepository(context) }
 
     @get:Rule
     val cameraRule: RuleChain = RuleChain.outerRule(GrantPermissionRule.grant(Manifest.permission.CAMERA))
         .around(compose)
+
+    @Before
+    fun startRecomposerOnMainScheduler() {
+        compose.mainClock.advanceTimeByFrame()
+        compose.runOnUiThread {
+            clockRunning = true
+            clockHandler.post(clockFrame)
+        }
+    }
+
+    @After
+    fun closeActivityAndDrainSchedulerBeforeComposeTeardown() {
+        compose.runOnUiThread {
+            clockRunning = false
+            clockHandler.removeCallbacks(clockFrame)
+        }
+        try {
+            compose.activityRule.scenario.close()
+        } finally {
+            // Dispose the Activity-owned composition and its lifecycle observers on main before
+            // Compose 1.7.6 performs its final TestScope cleanup on the instrumentation thread.
+            compose.runOnUiThread { mainScheduler.runCurrent() }
+        }
+    }
 
     protected fun control(description: String) = compose.onNodeWithContentDescription(description)
 
@@ -79,6 +126,13 @@ abstract class CameraUiTest {
         val deadline = SystemClock.elapsedRealtime() + 60_000
         while (SystemClock.elapsedRealtime() < deadline) {
             repository.getRecords().firstOrNull(matches)?.let { return it }
+            // StandardTestDispatcher queues recompositions/collection on the test scheduler;
+            // pump one frame (runCurrent on the main thread) while the clock auto-advances so
+            // IO-produced records can recompose the UI between repository polls. Tests that
+            // froze mainClock keep full manual control (no pumping).
+            if (compose.mainClock.autoAdvance) {
+                compose.mainClock.advanceTimeByFrame()
+            }
             SystemClock.sleep(150)
         }
         throw AssertionError(message)

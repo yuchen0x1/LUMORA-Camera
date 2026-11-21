@@ -1,5 +1,14 @@
 # 平台与分发
 
+## 当前候选：2.1.7 / code 11（2026-11-21，未发布）
+
+- 公开分发仍为 **v2.1.6 / code 10 / minSdk 29**。2.1.7 / code 11 未推送/打正式标签/发布，提交以 git HEAD 为准，没有新增已交付平台；远程 CI、签名前 CodeQL、签名与公开资产未完成。
+- EOF 空行清理后构建/Lint 与 JVM 53/53 实际重跑通过。Debug/未签名 APK 摘要变化后，当前精确 Debug/test APK 已重新通过 API 29/35 默认集 150/151、双 API 安装器取消、真实 360dp/fontScale 200%、100 张耐久/200 JPEG 与平板 8/8；当前 8 张真实窄屏截图已复核。报告见 [TEST_REPORT](TEST_REPORT.md)。同版本 test-client fixture 不覆盖网络/递增版本门禁、UpdateDialog、实体设备或多窗口；备份迁移仍待验证。
+- 人工 fixed-width floating LIGHT 白图标 caveat 保留；CI 已加入真实 360dp/时钟像素与 opt-in 耐久检查，配置不替代远程 CI、硬件或正式发布验收。未签名 Release APK 不可作为正式分发资产；远程 CI、CodeQL、签名与正式升级仍待独立通过。
+- RAW/厂商 AF/扩展、实体硬件、12/48 MP 峰值内存、持久 URI 授权回收、提供方阻塞及实体安装器/折叠多窗口仍需独立验收。实际 APK 身份、全部失败与快照细节见 [TEST_REPORT](TEST_REPORT.md)。
+
+## 平台评估与公开版背景（历史保留）
+
 LUMORA 的核心是按镜头能力取景和拍摄、保留来源 JPEG、在设备上做胶片渲染、非破坏性编辑。平台选择由这些能力共同决定。色彩配方和测试图可以跨平台复用。当前 CPU 引擎直接依赖 Android Bitmap，取景、媒体 URI、权限及 EXIF 也有平台依赖。
 
 | 平台 | 结论 | 核心能力、体验与成本 | 分发和更新 |

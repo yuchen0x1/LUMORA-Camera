@@ -68,13 +68,15 @@ dependencies {
     implementation("androidx.camera:camera-extensions:1.6.2")
 
     implementation("androidx.exifinterface:exifinterface:1.3.7")
-    implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation("androidx.documentfile:documentfile:1.1.0")
     implementation("androidx.window:window:1.2.0")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.test:rules:1.6.1")
+    // Explicit test API, aligned with the locked CameraX/Compose coroutine runtime.
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

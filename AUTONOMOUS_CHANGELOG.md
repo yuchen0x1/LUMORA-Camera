@@ -1,5 +1,16 @@
 # 自主开发记录
 
+## 2026-11-21：2.1.7 / code 11 候选进行中（未发布）
+
+- 公开稳定版仍为 v2.1.6 / code 10；独立 `lumora-evolution-217` 的 2.1.7 / code 11 候选未推送/打正式标签/发布，提交以 git HEAD 为准。原 E 盘 status/binary diff 指纹均匹配，历史证据不改写。
+- 候选已迁入 RAW、主题/安全区、PRO 可保存状态、仅预览 OOM 降级、有界进程所有的队列与持久日志（检查写入、移除墓碑、重建协调）、显式且仅新增的索引恢复预览/隐私提示/错误处理。
+- EOF 空行清理后重建成功，Debug/Release、无 suppression 严格 Lint 与 JVM 53/53 实际重新执行通过；生产逻辑未改，但 Debug/未签名 APK 摘要已变化，故对冻结新包重新验收，而非套用旧快照。
+- 当前不可变产物通过 API 29/35 默认矩阵 150/151、双 API 真实安装器取消、真实 360dp/fontScale 200%、100 张耐久保留 200 JPEG及 API 35 平板 8/8；8 张当前窄屏截图已人工复核。测试 fixture 不覆盖下载/递增版本门禁、UpdateDialog、实体设备或多窗口；人工 fixed-width floating LIGHT 白图标 caveat 仍保留。
+- DocumentFile 1.1.0、可信来源的新 Gradle 9.1.0 Wrapper、STRICT 锁/校验、919/919 官方摘要审计（0 mismatches/bypasses；元数据 `SHA800c2a465d9b37c1495a35347c9e92662d85113995b0939c8f54702d740c4b5e`）及两份偏好 XML 备份白名单保持；日志隐式排除，宽泛 suppression 已移除。新未签名 Release APK 已按准确摘要做有界静态检查；唯一 high 为预期的未签名 APK-SIG，产物不能分发，受保护签名后需重新核验新摘要。
+- 远程 CI、实际 CodeQL/告警、签名/公开资产与正式升级仍未完成；URI 授权回收、提供方阻塞、实体硬件、厂商 AF/扩展、12/48 MP 内存与实体安装器/多窗口继续开放，不宣称积压全关或性能/画质改善。
+
+每轮构建、两次真实窄屏失败、早期 148/147 与耐久指标、当前完整本地门禁、APK 静态审计边界、安装 incident 和 fixture 范围统一保留于[验收记录](docs/TEST_REPORT.md)。
+
 ## 2026-11-21：2.1.6 / code 10 已发布
 
 - 从当时的 `origin/main` `2cda675` 在独立 `lumora-evolution-216` 工作树维护，纳入未发布的 2.1.5/code 9 数据保全与更新会话修复；原脏工作区全程未碰。原工作区状态与 tracked diff 指纹在会话前后一致。

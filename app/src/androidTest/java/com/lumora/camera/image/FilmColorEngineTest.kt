@@ -65,6 +65,27 @@ class FilmColorEngineTest {
         source.recycle()
     }
 
+    @Test fun zeroStyleIntensityDisablesOnlyThePresetNotOptimizationOrEdits() {
+        val source = Bitmap.createBitmap(8, 6, Bitmap.Config.ARGB_8888)
+        source.eraseColor(Color.rgb(48, 48, 48))
+        val colorPreset = presets.first { it.id == "forest_green" }
+        val monoPreset = colorPreset.copy(saturation = 0f, grain = 0.15f, vignette = 0.4f)
+        val color = FilmColorEngine.apply(source, colorPreset, standard, intensity = 0f)
+        val mono = FilmColorEngine.apply(source, monoPreset, standard, intensity = 0f)
+        val edited = FilmColorEngine.apply(source, colorPreset, standard,
+            PhotoEditParameters(exposure = 1f), intensity = 0f)
+        try {
+            assertTrue(color.sameAs(mono))
+            assertTrue(Color.green(color.getPixel(0, 0)) > 48)
+            assertTrue(Color.green(edited.getPixel(0, 0)) > Color.green(color.getPixel(0, 0)))
+        } finally {
+            source.recycle()
+            color.recycle()
+            mono.recycle()
+            edited.recycle()
+        }
+    }
+
     @Test fun automaticDenoiseReducesDarkRippleAndPreservesTheBrightEdge() {
         val pixels = IntArray(48 * 36) { i ->
             val x = i % 48

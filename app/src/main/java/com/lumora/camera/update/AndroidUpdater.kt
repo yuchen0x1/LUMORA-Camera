@@ -19,12 +19,18 @@ import java.net.URI
 import java.security.MessageDigest
 import javax.net.ssl.HttpsURLConnection
 
+internal data class UpdateInstall(
+    val intent: Intent,
+    internal val lease: UpdateInstallLease
+)
+
 internal interface UpdateClient {
     val versionName: String
     suspend fun check(): UpdateOffer?
     fun incompatibility(offer: UpdateOffer): String?
     suspend fun download(offer: UpdateOffer, progress: (Long) -> Unit)
-    suspend fun installIntent(offer: UpdateOffer): Intent
+    suspend fun installIntent(offer: UpdateOffer): UpdateInstall
+    fun releaseInstall(install: UpdateInstall)
     fun clearDownloaded()
 }
 
@@ -61,13 +67,26 @@ internal class AndroidUpdater(private val context: Context) : UpdateClient {
         }
     }
 
-    override suspend fun installIntent(offer: UpdateOffer): Intent = withContext(Dispatchers.IO) {
-        val apk = files.verifiedFile()
-        verifyArchive(apk, offer)
-        val uri = FileProvider.getUriForFile(context, "$packageName.updates", apk)
-        Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
-            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            .putExtra(Intent.EXTRA_RETURN_RESULT, true)
+    override suspend fun installIntent(offer: UpdateOffer): UpdateInstall {
+        val lease = files.acquireInstallLease()
+        try {
+            val intent = withContext(Dispatchers.IO) {
+                val apk = files.leasedFile(lease)
+                verifyArchive(apk, offer)
+                val uri = FileProvider.getUriForFile(context, "$packageName.updates", apk)
+                Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    .putExtra(Intent.EXTRA_RETURN_RESULT, true)
+            }
+            return UpdateInstall(intent, lease)
+        } catch (error: Throwable) {
+            files.releaseInstallLease(lease)
+            throw error
+        }
+    }
+
+    override fun releaseInstall(install: UpdateInstall) {
+        files.releaseInstallLease(install.lease)
     }
 
     override fun clearDownloaded() = files.clear()

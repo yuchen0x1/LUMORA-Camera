@@ -34,6 +34,12 @@ internal fun preferredLens(id: String?, lenses: List<LensOption>): LensOption? =
 internal fun portraitAfterRotation(streamWidth: Int, streamHeight: Int, degrees: Int): Boolean =
     if (degrees % 180 == 0) streamHeight > streamWidth else streamWidth > streamHeight
 
+enum class RawAvailability(val unavailableReason: String?) {
+    AVAILABLE(null),
+    UNSUPPORTED("当前镜头不支持 RAW / DNG 输出"),
+    SESSION_UNAVAILABLE("当前镜头无法建立 RAW / DNG 拍摄会话")
+}
+
 data class DeviceCapabilities(
     val cameraId: String,
     val lensFacing: String,
@@ -62,7 +68,8 @@ data class DeviceCapabilities(
     val supportsAeLock: Boolean = false,
     val supportsAwbLock: Boolean = false,
     val physicalCameraIds: List<String> = emptyList(),
-    val focusDistanceInDiopters: Boolean = false
+    val focusDistanceInDiopters: Boolean = false,
+    val rawAvailability: RawAvailability = RawAvailability.UNSUPPORTED
 ) {
     val supportsManualExposure: Boolean
         get() = manualSensorAvailable && isoRange != null && isoRange.min > 0 &&

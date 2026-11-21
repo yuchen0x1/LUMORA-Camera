@@ -26,9 +26,17 @@ jobs:
     needs: origin
     uses: ./.github/workflows/ci.yml
 
+  security:
+    needs: origin
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    uses: ./.github/workflows/codeql.yml
+
   sign:
     name: Build and sign
-    needs: verify
+    needs: [verify, security]
     environment: android-release
     runs-on: ubuntu-24.04
     timeout-minutes: 25

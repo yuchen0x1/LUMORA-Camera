@@ -1,5 +1,21 @@
 # 自主维护任务
 
+## 当前：2.1.7 / code 11 候选（2026-11-21，未发布）
+
+公开稳定版仍为 2.1.6 / code 10；候选未推送/打正式标签/发布，提交以 git HEAD 为准。勾选仅代表具体本地证据已取得，不表示全部发布门禁或积压关闭。**最终重建产物本地门禁现已完整通过；远程 CI、签名、公开资产和正式升级仍未完成。**
+
+- [x] EOF 空行清理后构建/Lint 成功，JVM 53/53 实际重新执行，0 失败/错误/跳过；生产逻辑未改，但 Debug/未签名 APK 字节摘要变化，已冻结不可变副本并为准确新摘要重验。
+- [x] 当前 Debug/test APK 对应的 API 29/35 默认矩阵分别 150/150、151/151 通过；安装均使用明确 serial 与 `-r`，设备上复核 Debug SHA-256。
+- [x] 当前产物双 API 真实 Android 安装器取消通过；同一 UUID 的 FileProvider 文件直至取消结果后才释放，未执行安装；app-op 恢复 default，fixture 范围与限制见报告。
+- [x] 核对 919/919 官方摘要审计（0 mismatches/bypasses），元数据 `SHA800c2a465d9b37c1495a35347c9e92662d85113995b0939c8f54702d740c4b5e`；备份严格两份偏好 XML 白名单、日志隐式排除，无宽泛 FullBackupContent suppression。
+- [x] 当前产物 API 35 真实 360dp/fontScale 200%、LIGHT/DARK 像素断言、页面/触控断言 **OK 1**；八张 720×1920 新截图逐张复核。保留人工 fixed-width floating LIGHT 白图标 caveat 和历史失败。
+- [x] 当前产物 API 35 平板 **8/8**；100 张耐久 **OK 1**，保留 200 JPEG，新指标和运行 PID/时间关联已记录，不将采样 PSS 外推为实体峰值或性能提升。
+- [ ] 验证 UpdateDialog 接线、实体安装器/多窗口及实际云备份/迁移；本地安装器取消通过不覆盖这些边界。
+- [ ] 继续持久 URI 授权回收、外部提供方阻塞、实体硬件、厂商 AF/扩展和 12/48 MP 内存验收，不把有限持久化/恢复用例外推为完整保证。
+- [ ] 完成远程 CI、实际 CodeQL/告警结果（java-kotlin / python / actions）、签名与公开资产门禁；当前候选仍未发布。
+
+实际日志、两次真实窄屏失败、安装 incident、准确新 APK 门禁及签名阻断详见 [TEST_REPORT](docs/TEST_REPORT.md)；原 E 盘 status/binary diff 指纹均匹配。
+
 ## 2.1.6 / code 10：已发布（2026-11-21）
 
 - [x] 从当时的 `origin/main` 基线 `2cda675` 在独立 `lumora-evolution-216` 工作树开展；不触碰原脏工作区，纳入未发布的 2.1.5/code 9 修复；实现后安全合并最新主线，最终发布目标为 `0bfcead`。

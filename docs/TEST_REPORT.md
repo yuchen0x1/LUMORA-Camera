@@ -1,5 +1,126 @@
 # LUMORA Camera 验收报告
 
+## 2.1.7 / code 11：候选验证进行中（2026-11-21，未发布）
+
+**公开稳定版仍为 2.1.6 / code 10。** 以下记录实际取得的本地证据，不代表远程 CI、签名或正式发布。原 E 盘工作树的 `git status -z` 与 binary diff 指纹在修正哈希序列化后均匹配；这不抹去下方设备安装 incident。
+
+### 当前重建产物：全部本地 APK 绑定门禁通过
+
+最终仅清理 `ShutterDiagnostics.kt` 的 EOF 多余空行后，`D:/BuildTemp/lumora217-final-staged-rebuild.log` **BUILD SUCCESS，1m52s / 129 tasks（24 executed、105 up-to-date）**；构建/Lint 通过，`:testDebugUnitTest` 实际重新执行而非 UP-TO-DATE，fresh XML 为 **53 tests / 0 failures / 0 errors / 0 skips**。生产逻辑未改，但 APK 字节比较失败，因此不声称 APK 自此前快照未变；重建前设备结果单独保留，未套用为当前包的通过证据。
+
+不可变副本位于 `D:/BuildTemp/lumora217-final-artifacts-p02m0pif`，身份记录为 `D:/BuildTemp/lumora217-final-artifacts-p02m0pif/artifact-identities.json`：
+
+| 当前产物 | 字节数 | SHA-256 |
+| --- | ---: | --- |
+| Debug APK | 70,052,474 | `cacfad80438471288c56b2210f6cbc3684a13683fddbd04a24f0ab6c5e6ecd59` |
+| 未签名 Release APK | 50,442,871 | `232983df7f9ef902a1565e870b59c50ad2610c55fa051b9c10e32495803f9c8f` |
+| AndroidTest APK（字节未变） | 2,965,635 | `ad270be76f7f3d35a8b36787691ec5c7417b8bda68330f503acd06e72886d81e` |
+
+所有以下运行均使用这份精确 Debug APK 与表列 AndroidTest APK；双 API 安装时用 `adb install -r` 保留 userdata，安装后再次以设备端 SHA-256 匹配 Debug APK；仪器报告均检查正的 `OK (N tests)`：
+
+- API 29 默认矩阵：**OK (150 tests)**，119.394s；`D:/BuildTemp/lumora217-staged-final29-default.txt`。
+- API 35 默认矩阵：**OK (151 tests)**，192.085s；`D:/BuildTemp/lumora217-staged-final35-default.txt`。
+- 真实系统安装器取消：API 29 **OK (1 test)** / 2.256s；API 35 **OK (1 test)** / 3.759s。返回取消后才释放 retired APK，未执行安装；运行前后 `REQUEST_INSTALL_PACKAGES` 均为 `default`。报告分别为 `D:/BuildTemp/lumora217-staged-final29-realinstaller.txt` 与 `D:/BuildTemp/lumora217-staged-final35-realinstaller.txt`；新 API 29/35 系统安装器截图分别保存在 `D:/BuildTemp/lumora217-staged-installer29-b465ujg2` 和 `D:/BuildTemp/lumora217-staged-runtime35-2zgofy_y`，均已读图核实。
+- API 35 真实窄屏：720×1920 / density 320（360dp）、fontScale 200%，**OK (1 test)** / 30.856s；LIGHT/DARK 状态栏像素、48dp 和页面操作断言通过。当前产物 8 张 720×1920 截图均已人工复核（设置、设备信息、图库、编辑器各 LIGHT/DARK），保存在 `D:/BuildTemp/lumora217-staged-runtime35-2zgofy_y`；报告 `D:/BuildTemp/lumora217-staged-final35-real-narrow.txt`。
+- API 35 耐久：**OK (1 test)** / 323.345s（JUnit）；100 次拍摄保留 200 个 JPEG。fresh metrics 为 `previewMs=61090`、`medianMs=2589`、`p95Ms=2917`、`maxMs=3292`、`largestSampledPssKb=141379`、`elapsedMs=257894`、`thermalStatus=0`；按同一生产进程 PID、真实 `ActivityManager` 启动 epoch 与 junit 运行时长关联，排除了历史 logcat。PSS 是间隔采样值；设备为 1856×1392 模拟器，不证明实体 12/48 MP 峰值。报告与指标分别为 `D:/BuildTemp/lumora217-staged-final35-endurance.txt`、`D:/BuildTemp/lumora217-staged-final35-endurance-metrics.txt`，关联方法见 `D:/BuildTemp/lumora217-staged-runtime35-2zgofy_y/endurance-metrics-provenance.json`。
+- API 35 平板：**OK (8 tests)** / 22.579s；1600×2560 / density 280，结束后恢复物理 1080×2400 / density 420。报告：`D:/BuildTemp/lumora217-staged-final35-tablet.txt`。
+- Release APK 有界静态复核绑定 SHA-256 `232983df7f9ef902a1565e870b59c50ad2610c55fa051b9c10e32495803f9c8f`、50,442,871 B：`D:/BuildTemp/lumora217-staged-exposure-_5dc_veo/verification-report.txt`。身份 `com.lumora.camera` 2.1.7/code 11/min 29/target 35/compile 36，非 debuggable；FileProvider 仅共享 `cache/verified-update/`，导出接收器要求 `android.permission.DUMP`，备份资源仅列两份偏好 XML。APK 内无签名块/签名成员，故静态扫描唯一高危项为预期 unsigned APK-SIG，`--fail-on high` 返回 1；这是明确的不可分发阻断，**不代表扫描通过或正式包可发布**。原始分数 86/B 为启发式相对值。解压归档 CRC 全项读取，未发现匹配的发布凭证模式或打包私钥/映射文件；pattern scan 不证明绝无编码/未匹配秘密，未执行密码学验签，也未审计服务端信任/运行时行为。最终受保护签名包是不同摘要，必须另行校验、验签与复扫。
+
+两台本任务 AVD 分别以显式 serial 5560/5562 验证 AVD 身份与 API，并在覆盖安装前确认 `adb devices` 无其他设备。运行后恢复本任务原始窗口/转场动画 1.0、animator 缺省（原为 null）、fontScale 1.0、物理分辨率/密度及安装 app-op default；未声称恢复重启前未记录的 night mode。仅停止两个准确匹配的本任务 AVD；未 wipe、卸载、`pm clear`、删除照片或媒体。设备数据保留。API 35 真窄屏新截图及安装器截图均已从本轮新产物设备拉取，未引用重建前图片。
+
+
+本轮工具恢复与收尾边界：耐久测试先取得 OK，随后采集中文 logcat 时因 Python/Windows 默认 GBK 解码失败，组合命令退出 1，平板步骤尚未开始。修正为显式 UTF-8 后，只重新读取日志，以同一 PID/进程启动时间及 JUnit 时长关联当前指标，再执行平板；没有重拍 100 张或重复已成功的门禁。GitHub 只读认证检查也曾遇到相同默认编码问题，已仅修正该读取。一次版本检查误从原工作区执行而被版本门禁拒绝，改为 ASCII 候选脚本绝对路径后得到 2.1.7/11/29，未修改原工作区。
+
+设备均在设置回读完成后收到明确的 `emu kill` / bye 响应，最终 `adb devices` 为空。API 29 宿主进程 exit 0；API 35 宿主后台任务报告 exit 1，其末段记录 20 秒 graceful-wait 与 snapshot/client 警告，不能宣称两个宿主均正常 exit 0。该宿主退出发生于全部仪器门禁与设备设置回读之后，不抹去已完成的 APK 绑定报告，也未因该警告重启或清除设备。
+
+### 重建前确认结果（历史快照，不是当前新 APK 验收）
+
+- 重建前生产窗口背景同步已修复深色 backing，正常全宽 LIGHT 截图可读；人工固定宽度 floating LIGHT 白图标仍作为独立 caveat 保留。此后除测试/CI 调整外，还清理了生产文件的 EOF 空行；生产逻辑未改不等于源码或 APK 字节未变。
+- JVM **53/53、0 失败/错误/跳过实际重新执行**，Debug/Release 构建成功：`D:/BuildTemp/lumora217-final-windowbacking-app.log`。无 FullBackupContent suppression 的严格 Lint 已成功 **2m47s / 71 tasks**：`D:/BuildTemp/lumora217-final-windowbacking-tests-lint.log`；后续 contrast / MATCH_PARENT 测试包构建亦成功。
+- 同步修正后专项：API 35 **OK 32 / 81.255s**、API 29 **OK 31 / 52.742s**，包含新增 3 项持久化回归（仓库 1、重建协调 2）。shared Standard rule 尝试前的 API 29 默认集已有两次有效历史通过：`lumora217-candidate-final-default-29.txt` **OK 150 / 104.117s**、`lumora217-final-matchparent-default-29.txt` **OK 150 / 100.561s**；它们不属于最终 frameclock harness；当前重建 APK 的准确最终矩阵现列于本报告开头。下方 148/147 为历史快照，不称为最终结果。
+- 真实 Android 安装器取消：`D:/BuildTemp/lumora217-realinstaller-35.txt` **OK 1 / 2.701s**，`D:/BuildTemp/lumora217-realinstaller-29.txt` **OK 1 / 1.859s**。两端均收到同一 UUID 的真实取消 resultCode 0；清理期间 APK 的 FileProvider 读取哈希仍保持，收到结果后才释放并删除，未实际安装，app-ops 均恢复 default。
+- 安装器 fixture 使用同版本 APK，经 test client 绕过网络、archive/递增版本门禁；覆盖生产 ViewModel、缓存与真实 ActivityResult 链路，**不覆盖 UpdateDialog 接线、实体设备或多窗口**，不能外推为完整更新验收。该专项使用独立 ActivityScenario，不继承有问题的 shared rule，既有双 API 通过仍独立有效。
+- 重建前未签名 APK **50,442,871 B**，SHA-256 `d9fe44e282decf228db4bd2c8fb5727210105e74cbd5033ab06819afe1c486a4`；当时 aapt 确认为 2.1.7 / code 11 / min 29 / target 35 / compile 36、非 debuggable；manifest 为 allowBackup=true、两项备份 XML 引用、cleartext=false。暴露面 86 仅为该历史产物的启发式提示，不是当前新摘要产物重新扫描、可分发或绝对安全证明。
+- 共享 `CameraUiTest` 的早期 `StandardTestDispatcher` 尝试曾暴露 `removeObserver` 主线程违规并停滞，失败日志均保留；当轮仅调整共享 fixture 的 frame-clock 驱动。重建前 frameclock 产物的 API 35 真实 360dp、API 29 **150/150**、API 35 **151/151**、平板 **8/8**、100 张耐久及双 API 安装器取消已完成，详细指标见下方历史段。**这些通过不能代替重建后当前新 APK 的独立设备验收；其对应完整重验现记录于上方当前产物章节，也不等于远程 CI、签名或正式发布。**
+
+CI 现在默认排除 opt-in 真实安装器用例，在两种 API 上独立执行并要求 canceled-result 日志标记；API 35 顺序为真实 360dp profile、100 张耐久、平板。新增检查使用实际时钟像素，不只断言系统栏 flags；这些配置变更不等于远程 CI 已运行。
+
+安装器截图仅就上述 fixture 完成独立复核：父任务已拉取并读图确认 API 35 `D:/BuildTemp/lumora217-installer-emulator-5560-3i7tfxmv/real-installer-3cb2a202-1f5b-492b-9d84-5f4088572ed4.png` 与 API 29 `D:/BuildTemp/lumora217-installer-emulator-5562-bm1zchka/real-installer-3ddc1d28-5bfd-4ac0-8c34-04389f64b1b0.png`，均为真实 LUMORA 系统安装器更新确认，Cancel 与 Update/Install 按钮可读。没有点击 Install；测试通过 Back 取消。此截图复核不是生产下载/校验器、完整 UpdateDialog 或 2.1.7 正式签名覆盖升级证明。
+
+### 历史 shared CameraUiTest lifecycle 修正尝试（该轮未通过）
+
+- 本轮只保留命名的 `TestCoroutineScheduler` 与 `StandardTestDispatcher`：base `@Before` 先推进 `mainClock` 一帧，base `@After` 在 `try/finally` 中关闭 scenario 后再由 UI 线程执行 `scheduler.runCurrent`；`awaitPhoto` 仅在 `mainClock.autoAdvance=true` 时推进帧，原有 60 秒超时和断言不变。构建前已移除中间的错误 `+Dispatchers.Main` 方案，未把未验证快照当作证据；没有生产或依赖改动。
+- 离线 `assembleAndroidTest` 与双 Lint 构建通过：`D:/BuildTemp/lumora217-lifecycle-tests-lint.log`，**1m46s / 71 tasks（14 executed、57 up-to-date）**，仅有既存的两条 deprecated `barColor` 警告。Debug app SHA-256 `13ce4f413005f4023425b962658dabcb4a40069361f77dc6013cb1efbf267746` 与两台设备已安装字节独立匹配；测试 APK SHA-256 `b5ad86a4d4709d41a5d7347c016cd7ce6c0f73e1dac092f4ab1ef4e3c140bacc` 已显式安装到两台设备。最终未签名 APK 身份哈希仍未改变。
+- 运行仍未通过：API 29 仅通过 CreativeState 与两个 Grid 用例（未再出现先前的 `removeObserver` 错误），随后在纯 `SystemClock.sleep` 轮询 burst 停滞；API 35 在真实 360dp、fontScale 200 的 LIGHT 设置页达到可读的深色状态栏时钟，随后停在 `performScrollTo`。诊断截图 `D:/BuildTemp/lumora217-running-narrow-5ze7juqp/screen.png` 仅是该中间状态证据，不是完整窄屏通过。
+- 只读 JDWP 栈显示主线程将 `ScrollableNode` 滚动语义排入 `StandardTestDispatcher`，runner 阻塞于 `ActionsKt.scrollToNode -> ThemeTest.font200`。辅助脚本曾先因 Python 语法错误而未执行，修正后取得 main/runner 栈，但短暂第三线程查询遇到 JDWP error 504（不是 HTTP 状态）；随后恢复 VM 并移除 forward。该诊断过程不宣称工具全程成功。
+- 两次无效运行的报告 `lifecycle-real-narrow-35.txt` 与 `lifecycle-default-29.txt` 均以 Process crashed / `INSTRUMENTATION_CODE 0` 结束；仅停止本次 QA 的两个应用进程，恢复 `fontScale=1.0`，未清数据、卸载或 wipe。后续帧时钟方案仅在 `mainClock.autoAdvance=true` 时启动/停止 16 ms Android Handler frame pump，并保留 close/drain 与 `autoAdvance=false` 的手动倒计时检查；该方案的最终结果见下节。
+
+### 重建前 frameclock fixture 完成结果（历史产物快照）
+
+以下只对应 EOF 清理前的 Debug `13ce4f413005f4023425b962658dabcb4a40069361f77dc6013cb1efbf267746` 与未签名 Release `d9fe44e282decf228db4bd2c8fb5727210105e74cbd5033ab06819afe1c486a4`；该轮完成后 APK 字节已变化，以下“最终/当前”均仅指当轮，不是当前新产物验收。
+
+- 最终测试 APK 构建：`D:/BuildTemp/lumora217-frameclock-androidtest.log` **BUILD SUCCESS，40s / 49 tasks（5 executed、44 up-to-date）**；双 Lint `D:/BuildTemp/lumora217-frameclock-final-lint.log` **success，44s / 40 tasks（4 executed、36 up-to-date）**，无生产源码改动。测试 APK SHA-256 为 `ad270be76f7f3d35a8b36787691ec5c7417b8bda68330f503acd06e72886d81e`，已显式安装到两台专用设备；生产 Debug/未签名 APK 摘要保持不变。
+- 真实窄屏：`D:/BuildTemp/lumora217-frameclock-real-narrow-35.txt` **OK 1 / 38.371s**；实际 720×1920、density 320（360dp）、fontScale 200%，保留 LIGHT/DARK 背景 RGB 与时钟像素、48dp、设置、设备信息、图库、编辑器和保存版本断言。8 张 720×1920 PNG 位于 `D:/BuildTemp/lumora217-frameclock-real360-fdm_5awz`，均已逐张复核，状态栏/对比度/可读性及操作控件正常。
+- 当前 API 29：`D:/BuildTemp/lumora217-frameclock-default-29.txt` **OK 150 / 137.728s**，150 次 start 与 150 次 code 0；输出没有 assumption code，仍不外推实体硬件。最终 API 29 安装器取消 `D:/BuildTemp/lumora217-frameclock-final29-realinstaller.txt` **OK 1 / 2.179s**，app-op trap 前后均为 default。
+- 当前 API 35：`D:/BuildTemp/lumora217-frameclock-final35-default.txt` **OK 151 / 214.106s**（151 start、151 code 0）；`D:/BuildTemp/lumora217-frameclock-final35-realinstaller.txt` **OK 1 / 3.221s**；`D:/BuildTemp/lumora217-frameclock-final35-endurance.txt` **OK 1 / 352.27s**；`D:/BuildTemp/lumora217-frameclock-final35-tablet.txt` **OK 8 / 28.45s**。这些结果与 API 29、真实 360dp 结果共同构成当前本地 frameclock 验证，不替代实体硬件验收。
+- 当前耐久指标来自按本次运行开始时间过滤的 `D:/BuildTemp/lumora217-frameclock-final35-endurance-metrics.txt`，不是旧 PASS 快照：`previewMs=61504`、`completed=100`、`retainedJpegs=200`、`medianMs=2793`、`p95Ms=3164`、`maxMs=3476`、`largestSampledPssKb=138742`、`elapsedMs=286774`、`thermal sampled=0`。仅在 1856×1392 模拟器采样；PSS 不是真实峰值，本 fixture 含受控时钟驱动，不作跨版本性能、画质或内存改善声明。
+- 失败轮次仍按原样保留；本轮仅停止名称精确匹配的任务专用 5560/5562 AVD，恢复 `window_animation_scale` / `transition_animation_scale=1.0`，删除原本为 null 的临时 animator 全局键，确认 1080×2400、density 420、无 override、fontScale 1.0 与 app-op default。未声称 night mode 被恢复；未 wipe、卸载或 `pm clear`，样本和 userdata 保留。两台设备随后仅被安全停止。
+- 当轮本地门禁已取得结果，完整记录保留；之后 EOF 清理重建导致 Debug/未签名 APK 摘要变化，新产物设备门禁重新验收中。远程 CI、实际 CodeQL/告警、签名公开资产及 2.1.6→2.1.7 正式覆盖升级仍待授权和独立验收；2.1.7 继续标为未发布。
+
+### 历史阶段结果（保留失败与已有通过）
+
+| 检查 | 该阶段实际结果 | 当时范围与边界 |
+| --- | --- | --- |
+| 发布脚本 / 静态检查 | 最终离线 **19/19**；此前 CI 脚本 `bash -n`、`git diff --check` 通过 | `D:/BuildTemp/lumora217-release-script-final.log`；早期 Python 3.14 同组 19/19 保留，不冒充远程工作流执行 |
+| 系统栏改动前 STRICT no-write 全量构建 | **129/129 任务通过** | 属于 pre-bar-fix 快照，不能冒充后续系统栏改动后的全量通过 |
+| 系统栏改动后全量 STRICT | **运行时中断，exit 1073807364** | 不是编译器诊断，也不计为成功；随后分段验证如下 |
+| 分段 STRICT：JVM / AndroidTest 打包 | **BUILD SUCCESSFUL，56 tasks，1m48s；JVM 报告 53/53、0 失败/错误/跳过** | `D:/BuildTemp/lumora217-final-jvm-androidtest.log`；其中 `testDebugUnitTest` 为 UP-TO-DATE，不冒称该分段重新执行了 53 项 |
+| 分段 STRICT：Debug / Release Lint | **BUILD SUCCESSFUL，40 tasks，22s** | `D:/BuildTemp/lumora217-final-lint.log`；不声称零警告或全部分析重新执行 |
+| 分段 STRICT：Debug / Release 打包 | **BUILD SUCCESSFUL，83 tasks，33s** | `D:/BuildTemp/lumora217-final-apk.log`；Release 仍为本地未签名中间包，不可当作正式分发 |
+| 最终官方来源 SHA-256 审计 | **919/919 匹配，0 mismatches / 0 bypasses** | `D:/BuildTemp/lumora217-verification-tools/official-checksum-audit.final.json`：526 sidecars + 28 GMM + 365 fresh downloads；校验元数据 SHA-256：`SHA800c2a465d9b37c1495a35347c9e92662d85113995b0939c8f54702d740c4b5e`（原始 Windows-CRLF 审计快照）；提交 Git-LF 归一化摘要 `cd23b0bdc4638ff9235e931085591f7d9a9a350581448f30bd0d56dd44209352`，仅换行差异且 919 条 XML 条目未变；不是 APK 摘要、漏洞扫描或 CodeQL 结论 |
+| 备份 / 网络规则与 Release manifest 范围 | **已有产物范围核验通过；规则清理结构断言通过；修改后最终 Lint/产物待复核** | `allowBackup=true`、两项备份 XML 属性、HTTPS-only；三种模式均仅白名单允许 `lumora_preferences.xml` / `lumora_updates.xml`，日志隐式排除。宽泛 FullBackupContent suppression 与三条冗余 exclude 已移除，无 suppression 的结构断言通过，不宣称实际迁移已验收 |
+| 历史 API 35 常规仪器 | **OK，148 tests，178.016s** | 专用 `emulator-5560`；`D:/BuildTemp/lumora217-final-instrumentation-35-default.txt`，默认集排除独立耐久测试 |
+| API 35 平板 SafeArea | **此前快照 OK，8 tests** | 模拟器平板安全区子集，不替代仍在修正的窄窗口系统栏视觉验收 |
+| API 29 首次常规仪器 | **147 tests / 1 failure** | 专用 `emulator-5562`；唯一失败为 `CameraThemeTest.font200…`（用例名缩写），ActivityScenario teardown 时 Activity 为 `DESTROYED`；保留首次生命周期 flake，不记作首轮通过 |
+| API 29 主题隔离重放 | **OK，3 tests** | 实际重放 `CameraThemeTest`，随后完整重跑亦 OK 147；不抹去首次失败 |
+| 历史 API 29 常规仪器 | **OK，147 tests，113.364s** | `D:/BuildTemp/lumora217-final-instrumentation-29-default.txt`；完整运行，不把隔离重放冒充完整通过 |
+| 历史 API 35 显式耐久 | **OK，1 test，299.108s；metrics PASS** | `D:/BuildTemp/lumora217-final-endurance-35.txt`；`endurance=true`、`previewSeconds=60`，实际 `previewMs=60380`；完成 100 张并保留 200 个 JPEG，详见下表 |
+| UI 视觉复核 | **42 个截图文件已拉取并复核；系统栏问题仍开放** | 本机 `D:/BuildTemp/lumora217-uiux-35`；浅色/深色、大字体、设置均已查看；窄窗口白色状态栏仍可见，不能宣称已修复 |
+| 专用模拟器状态 | API 35 `emulator-5560` / API 29 `emulator-5562` 均已安装 Debug APK 与测试 APK | 已用于上述实际仪器测试，不代表正式签名覆盖升级；OK 总数不能证明硬件分支零跳过 |
+
+前一轮耐久指标已只读核对 `D:/BuildTemp/lumora217-final-endurance-metrics-35.txt`；文件名虽含 final，以下仅属该历史快照，不能与上方当前重建 APK 的耐久结果/指标混用。保留日志字段与单位，PSS 为间隔采样最大值，非瞬时峰值或实体机结论：
+
+| 字段 | 该轮实际结果 |
+| --- | --- |
+| metrics | PASS |
+| completed | 100 |
+| retainedJpegs | 200 |
+| medianMs | 2311 |
+| p95Ms | 2526 |
+| maxMs | 2546 |
+| largestSampledPssKb | 134458 |
+
+此前另一轮次报告的 median 1981 / p95 2175 / max 2193 / largestPss 135472 为早期数据，不与上述最终文件混用，也不据此主张跨版本提速。
+
+### 窗口背景修正与真实窄屏验证经过
+
+最初深色 backing 的根因为 Compose `#171918` 与窗口背景 `#F8F9F5` 不同步，生产同步修正已解决这一 backing 问题；正常全宽 LIGHT 截图可读。人工固定宽度 floating LIGHT 截图仍有白色图标，是独立的窗口形态 caveat，不能据此否定已确认的 backing 修正，也不能宣称所有系统栏已完美。
+
+1. `D:/BuildTemp/lumora217-real-narrow-35.txt` 首轮真实窄屏失败于 LIGHT 时钟像素对比度。测试将原本等宽的 MATCH_PARENT 窗口强行改为 fixed px；保留此失败，不计为通过。
+2. 修正测试为已有宽度 <=361dp 时保留 MATCH_PARENT，几何断言不变。`D:/BuildTemp/lumora217-real-narrow-matchparent-35.txt` 第二轮已到达图库，随后因 Compose 测试 Unconfined 在 IO 线程重组、无 Looper 而失败；**这是测试调度问题，不是生产 dispatcher 变更**。
+3. 共享 CameraUiTest 参照既有 CameraPermissionNavigationTest 惯例尝试 StandardTestDispatcher，随后 API 29 运行暴露 Activity lifecycle 的 removeObserver 必须主线程调用，API 35 真实窄屏运行停滞；该尝试不计为已验证修复，正在审查 Compose 1.7.6 rule 实现。
+4. 仅停止专用 5560/5562 上本次 QA 应用进程（am force-stop），恢复原 fontScale=1.0；没有清数据、卸载或 wipe。`final-scheduler-default-29` 在已记录 removeObserver 违规之后，经此显式停止以 Process crashed / INSTRUMENTATION_CODE 0 结束，不是通过。后续独立查询两台 QA 设备：应用无 PID、1080×2400 / density 420 且无 override、font 1.0、night no、安装 app-op default；这些仅是当时环境基线，不抹去失败日志。
+
+上述失败与后续修正及当前人工 fixed-width caveat 分开记录；准确重建后门禁已在本报告开头独立列示，不能将早期 148/147 或历史耐久作为当前新 APK 的证据。
+
+设备安装 incident：完整读取 `D:/BuildTemp/lumora217-install35.log` 后确认，第 44–47 行的未限定设备 Gradle `installDebug` 曾向既有 `lumora_release216_upgrade(AVD) - 15` 尝试安装；Android 因 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`（证书不匹配）拒绝，第 224–239 行为任务失败及 BUILD FAILED。没有成功替换旧安装，**不能声称旧设备从未被尝试操作，也不能仅凭拒绝就证明所有旧设备状态均未改变**。之后安装均显式指定专用 `-s emulator-5560` / `-s emulator-5562`；这不是正式签名覆盖升级证据。
+
+早期失败与阶段性证据仍保留：首次 STRICT 构建因延迟配置 `androidApis` 缺锁失败；首次 bootstrap 在两处更新器 API 调用点编译失败。修正后第二次 bootstrap 实际 JVM 53/53（15 suites，XML `2026-11-21T04:25:52Z`，含 CaptureWorkQueue 4、CaptureRecovery 6、ManualRestore 3、BitmapBudget 6）通过；该阶段不是最终 STRICT，最终结果见上表。早期来源审计为 879/879（500 sidecars + 28 GMM + 351 次新鲜 HTTPS 下载），当时校验元数据 SHA-256 为 `492088dba5e7435969b91c951ca13c32be5dea4cee4692319f67399f58339cb3`；最终审计已扩展至 919/919，不混用两个快照。
+
+候选范围：迁入 RAW/主题/安全区、仅预览 OOM 降级、PRO 可保存状态、进程所有的有界拍摄/渲染队列与持久日志（检查写入、移除墓碑、重建协调）、显式且仅新增的索引恢复预览/隐私提示/错误处理；DocumentFile 1.1.0、可信来源的新 Gradle 9.1.0 Wrapper、STRICT 锁与依赖校验、两份偏好 XML 备份白名单及云备份/设备迁移排除拍摄日志。上述本地通过只证明所测范围，不保证完整损坏恢复、任意异常终止或设备迁移行为。
+
+远程 CI、实际 CodeQL（java-kotlin / python / actions）、受保护签名与正式资产仍待完成；**2.1.7 未发布、未推送/打正式标签，候选源码提交以 git HEAD 为准**。当前重建产物的构建/Lint/JVM、双 API 默认集、真实 360dp 窄屏、平板、100 张耐久与安装器取消均已通过，详细结果见本报告开头。UpdateDialog 接线、真实云备份迁移、实体安装器与多窗口、持久 URI 授权引用回收、外部提供方阻塞、厂商 AF/扩展、实体硬件和 12/48 MP 峰值内存继续开放。不得从模拟器 OK 总数推断零硬件跳过，不声称全部积压关闭或跨版本性能/画质改善。当前未签名 APK 暴露面 86/B 为启发式相对分数；唯一高项是预期的 APK-SIG 未签名阻断、不能分发，详见 [安全审查](../SECURITY_AUDIT.md) 与上方按摘要绑定的静态复核。
+
 ## 2.1.6 / code 10：最终本地验证与正式发布（2026-11-21）
 
 下表针对本地合并提交 `6497ad1` 中包含 KTX setter、点按 AF 竞态封堵、同步回滚失败隔离及未知网格值保护的**准确最终源码快照**执行；该提交随后进入 main 并作为 2.1.6 的发布基线。

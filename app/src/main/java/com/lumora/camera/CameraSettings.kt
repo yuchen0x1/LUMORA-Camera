@@ -14,6 +14,11 @@ internal class CameraSettings(context: Context, preferencesName: String = "lumor
             prefs.edit().putBoolean(property.name, value).apply()
         }
     }
+    var themeMode: com.lumora.camera.ui.AppThemeMode
+        get() = com.lumora.camera.ui.AppThemeMode.entries.firstOrNull {
+            it.name == prefs.getString("themeMode", null)
+        } ?: com.lumora.camera.ui.AppThemeMode.SYSTEM
+        set(value) { prefs.edit().putString("themeMode", value.name).apply() }
     var volumeShutter by toggle(true)
     var shutterSound by toggle()
     var histogram by toggle()

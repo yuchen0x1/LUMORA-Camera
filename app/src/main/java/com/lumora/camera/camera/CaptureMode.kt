@@ -15,5 +15,6 @@ enum class CaptureMode(
     MACRO_ASSIST("微距对焦辅助", false, true),
     LANDSCAPE_PROFILE("风景配置", false, false),
     STREET_PROFILE("街拍配置", false, false),
-    LONG_EXPOSURE_ASSIST("长曝光辅助", false, true)
+    LONG_EXPOSURE_ASSIST("长曝光辅助", false, true),
+    RAW("RAW / DNG", true, false)
 }

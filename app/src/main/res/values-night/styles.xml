@@ -1,0 +1,12 @@
+<resources>
+    <color name="lumora_window_background">#171918</color>
+    <style name="Theme.Lumora" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">@color/lumora_window_background</item>
+        <item name="android:colorAccent">#D6B27A</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+</resources>

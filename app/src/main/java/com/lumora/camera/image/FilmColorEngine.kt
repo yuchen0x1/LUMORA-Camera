@@ -33,6 +33,8 @@ object FilmColorEngine {
         val width = bitmap.width
         val height = bitmap.height
         val level = strength.factor
+        // Intensity controls only the preset. At 0%, scene optimization and manual edits still run;
+        // callers must not treat this as an identity render or a lossless JPEG copy.
         val mix = if (intensity.isFinite()) intensity.coerceIn(0f, 1f) else 1f
         val style = mix * level
         val scene = analyze(bitmap)

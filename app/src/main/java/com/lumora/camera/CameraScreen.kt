@@ -3,6 +3,8 @@ package com.lumora.camera
 import android.graphics.Bitmap
 import android.media.MediaActionSound
 import android.net.Uri
+import android.os.Build
+import android.view.accessibility.AccessibilityManager
 import androidx.activity.compose.BackHandler
 import androidx.camera.core.ImageCapture
 import androidx.camera.view.PreviewView
@@ -10,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -23,21 +26,29 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -50,19 +61,26 @@ import androidx.window.layout.WindowInfoTracker
 import com.lumora.camera.camera.*
 import com.lumora.camera.data.*
 import com.lumora.camera.image.PhotoEnhancementEngine
-import com.lumora.camera.ui.CompositionGrid
 import com.lumora.camera.ui.PhotoAids
 import com.lumora.camera.ui.PhotographyOverlay
+import com.lumora.camera.ui.ViewfinderSystemBarScrims
+import com.lumora.camera.ui.ViewfinderTokens
+import com.lumora.camera.ui.safeAreaPadding
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 private enum class CameraPanel { PRO, TOOLS, FILM }
+
+private fun Modifier.statusLiveRegion(enabled: Boolean): Modifier =
+    if (enabled) semantics { liveRegion = LiveRegionMode.Polite } else this
 
 @Composable
 internal fun CameraScreen(
@@ -73,6 +91,9 @@ internal fun CameraScreen(
     onCapabilities: (DeviceCapabilities) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val screenPanel = Panel
+    val screenInk = Ink
+    val screenAccent = Accent
     val owner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     val settings = remember(context) { CameraSettings(context) }
@@ -99,6 +120,7 @@ internal fun CameraScreen(
     var capabilities by remember { mutableStateOf<DeviceCapabilities?>(null) }
     var activeMode by remember { mutableStateOf(CaptureMode.AUTO) }
     var mode by rememberSaveable { mutableStateOf(CaptureMode.AUTO) }
+    val rawMode = mode == CaptureMode.RAW
     var cameraId by rememberSaveable { mutableStateOf<String?>(null) }
     var wide by rememberSaveable { mutableStateOf(false) }
     var panel by rememberSaveable { mutableStateOf<CameraPanel?>(null) }
@@ -108,11 +130,14 @@ internal fun CameraScreen(
     var bindError by remember { mutableStateOf<String?>(null) }
     var focus by remember { mutableStateOf<FocusStatus?>(null) }
     var focusPoint by remember { mutableStateOf<Offset?>(null) }
+    var viewfinderSize by remember { mutableStateOf(IntSize.Zero) }
+    var focusFeedbackSize by remember { mutableStateOf(IntSize.Zero) }
     var focusAttempt by remember { mutableIntStateOf(0) }
     var flash by remember { mutableIntStateOf(ImageCapture.FLASH_MODE_OFF) }
     var zoom by remember { mutableFloatStateOf(1f) }
     var evIndex by remember { mutableIntStateOf(0) }
     var manual by remember { mutableStateOf(ManualControls()) }
+    var desiredManual by rememberSaveable(stateSaver = ManualControlsSaver) { mutableStateOf(ManualControls()) }
     var applying by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf(repository.selectedStyleId) }
     val preset = presets.firstOrNull { it.id == selected } ?: presets.first()
@@ -178,10 +203,26 @@ internal fun CameraScreen(
                     if (mode != activeMode) report("已切换至 ${activeMode.label}")
                     zoom = camera.cameraInfo.zoomState.value?.zoomRatio ?: 1f
                     evIndex = camera.cameraInfo.exposureState.exposureCompensationIndex
+                    if (activeMode == CaptureMode.PRO && snapshot != null) {
+                        val restored = desiredManual.forReboundCamera(snapshot)
+                        applying = true
+                        controller.setManualControls(restored) { error ->
+                            if (current) {
+                                applying = false
+                                if (error == null) {
+                                    manual = restored
+                                    if (restored != desiredManual) report("已保留此镜头支持的专业参数；不支持的项目已恢复自动")
+                                } else report("专业参数未能恢复，请重试设置")
+                            }
+                        }
+                    }
                     snapshot?.let(latestOnCapabilities)
                 }
             }, onError = { error ->
-                if (current) bindError = error.localizedMessage ?: "相机连接失败"
+                if (current) {
+                    capabilities = null
+                    bindError = error.localizedMessage ?: "相机连接失败"
+                }
             }, cameraId = cameraId, mode = mode, wide = wide, jpegQuality = settings.jpegQuality)
         }
         onDispose {
@@ -190,7 +231,16 @@ internal fun CameraScreen(
         }
     }
 
-    LaunchedEffect(noticeId) { if (notice != null) { delay(4300); notice = null } }
+    LaunchedEffect(noticeId) {
+        if (notice != null) {
+            val manager = context.getSystemService(AccessibilityManager::class.java)
+            val timeout = manager?.getRecommendedTimeoutMillis(
+                4300, AccessibilityManager.FLAG_CONTENT_TEXT or AccessibilityManager.FLAG_CONTENT_CONTROLS
+            ) ?: 4300
+            delay(timeout.toLong())
+            notice = null
+        }
+    }
     LaunchedEffect(focusAttempt, focus) {
         if (focus != null && focus != FocusStatus.FOCUSING) { delay(1800); focus = null; focusPoint = null }
     }
@@ -202,16 +252,18 @@ internal fun CameraScreen(
     fun selectLens(id: String) {
         capabilities = null
         cameraId = id
-        mode = CaptureMode.AUTO
+        if (mode != CaptureMode.PRO) mode = CaptureMode.AUTO
         panel = null
     }
     val ready = resumed && streaming && capabilities != null && !busy && !applying
+    val shotCount = if (rawMode) 1 else burst
+    val viewfinderWide = wide && !rawMode
     fun trigger() {
         val caps = capabilities ?: return
         if (!ready || busy) return
         busy = true
         completed = 0
-        val count = burst
+        val count = shotCount
         val options = ShotOptions(preset, strength, intensity, settings.jpegQuality, caps, activeMode, manual)
         captureJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
@@ -219,21 +271,49 @@ internal fun CameraScreen(
                 remaining = 0
                 var message = ""
                 var unconfirmed = 0
+                // Burst fires the next frame as soon as the previous source is on disk; renders
+                // complete in the background and a failed render never stops the remaining shots.
+                val renders = mutableListOf<Deferred<ShotResult>>()
                 for (index in 1..count) {
                     var shutterFocus: FocusStatus? = null
-                    val result = CameraOutput.take(context, repository, controller, options,
-                        onFocus = {
-                            shutterFocus = it
-                            if (resumed) focus = it
-                        },
-                        onSourceSaved = { if (resumed) sound?.play(MediaActionSound.SHUTTER_CLICK) })
-                    completed = index
-                    if (shutterFocus == FocusStatus.FAILED || shutterFocus == FocusStatus.TIMEOUT) unconfirmed++
-                    if (!result.enhanced) {
-                        message = (result.notice ?: "已保存原片 · 成片处理失败") + "（$index/$count）"
-                        break
+                    if (count == 1) {
+                        val result = CameraOutput.take(context, repository, controller, options,
+                            onFocus = {
+                                shutterFocus = it
+                                if (resumed) focus = it
+                            },
+                            onSourceSaved = { if (resumed) sound?.play(MediaActionSound.SHUTTER_CLICK) })
+                        completed = index
+                        if (shutterFocus == FocusStatus.FAILED || shutterFocus == FocusStatus.TIMEOUT) unconfirmed++
+                        if (rawMode) {
+                            message = requireNotNull(result.notice)
+                            break
+                        }
+                        if (!result.enhanced) {
+                            message = (result.notice ?: "已保存原片 · 成片处理失败") + "（$index/$count）"
+                            break
+                        }
+                        message = result.notice ?: "已保存 · ${preset.name}"
+                    } else {
+                        val shot = CameraOutput.captureSource(context, repository, controller, options,
+                            onFocus = {
+                                shutterFocus = it
+                                if (resumed) focus = it
+                            },
+                            onSourceSaved = { if (resumed) sound?.play(MediaActionSound.SHUTTER_CLICK) })
+                        completed = index
+                        renders += shot.render
+                        if (shot.focus == FocusStatus.FAILED || shot.focus == FocusStatus.TIMEOUT) unconfirmed++
+                        message = "已保存 $index/$count 张"
                     }
-                    message = result.notice ?: if (count == 1) "已保存 · ${preset.name}" else "已保存 $index/$count 张"
+                }
+                if (renders.isNotEmpty()) {
+                    val results = renders.awaitAll()
+                    val failed = results.count { !it.enhanced }
+                    val notices = results.mapNotNull { it.notice }.distinct()
+                    message = if (failed == 0) "已保存 ${results.size} 张"
+                    else "已保存 ${results.size} 张 · $failed 张仅有原片"
+                    notices.firstOrNull()?.let { message += " · $it" }
                 }
                 if (unconfirmed > 0) message += if (count == 1) " · 未确认对焦" else " · $unconfirmed 张未确认对焦"
                 report(message)
@@ -256,8 +336,9 @@ internal fun CameraScreen(
     BackHandler(enabled = panel != null || remaining > 0) {
         if (remaining > 0) captureJob?.cancel() else panel = null
     }
+    val canTapFocus = ready && (manual.focusDiopters == null || manual.iso == null && !manual.aeLock)
     val tapFocus = { point: Offset ->
-        if (ready && manual.focusDiopters == null) {
+        if (canTapFocus) {
             focusAttempt++
             val token = focusAttempt
             focusPoint = point
@@ -268,7 +349,7 @@ internal fun CameraScreen(
     val focusHalfPx = with(LocalDensity.current) { 26.dp.toPx() }
     val cameraState = capabilities?.let { "${it.lensFacing} · ${it.cameraId} · ${activeMode.name}" } ?: "连接中"
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(ViewfinderTokens.background)) {
         val width = constraints.maxWidth
         val height = constraints.maxHeight
         val hingePadding = with(LocalDensity.current) {
@@ -286,16 +367,43 @@ internal fun CameraScreen(
             }
         }
         BoxWithConstraints(Modifier.fillMaxSize().then(hingePadding)) {
-        val longSideRatio = if (wide) 16f / 9f else 4f / 3f
+        val longSideRatio = if (viewfinderWide) 16f / 9f else 4f / 3f
         val viewfinderRatio = if (maxWidth > maxHeight) longSideRatio else 1f / longSideRatio
         val roomy = maxWidth >= 600.dp && maxHeight >= 420.dp
         val rail = 96.dp
         val previewSpace = if (roomy) Modifier.padding(end = rail) else Modifier
         Box(Modifier.fillMaxSize().then(previewSpace), contentAlignment = Alignment.Center) {
-        Box(Modifier.aspectRatio(viewfinderRatio).clipToBounds().testTag("camera-viewfinder")) {
+        Box(Modifier.aspectRatio(viewfinderRatio).clipToBounds().onSizeChanged { viewfinderSize = it }
+            .onKeyEvent { event ->
+                val activation = event.key == Key.Enter || event.key == Key.NumPadEnter ||
+                    event.key == Key.Spacebar || event.key == Key.DirectionCenter
+                if (activation && canTapFocus) {
+                    if (event.type == KeyEventType.KeyUp) {
+                        focusAction(Offset(viewfinderSize.width / 2f, viewfinderSize.height / 2f))
+                    }
+                    true
+                } else false
+            }
+            .focusable(enabled = canTapFocus)
+            .semantics {
+                contentDescription = "取景器"
+                stateDescription = when {
+                    canTapFocus -> "可对焦"
+                    ready && manual.focusDiopters != null -> "手动对焦已启用"
+                    else -> "相机未就绪"
+                }
+                if (canTapFocus) {
+                    role = Role.Button
+                    onClick(label = "中心对焦") {
+                        focusAction(Offset(viewfinderSize.width / 2f, viewfinderSize.height / 2f))
+                        true
+                    }
+                } else disabled()
+            }.testTag("camera-viewfinder")) {
             AndroidView(factory = { preview }, modifier = Modifier.fillMaxSize())
             if (resumed && streaming) PhotographyOverlay(
-                preview, aids, preset, strength, repository.previewQuality, Modifier.fillMaxSize(),
+                preview, if (rawMode) aids.copy(styledPreview = false) else aids,
+                preset, strength, repository.previewQuality, Modifier.fillMaxSize(),
                 onAvailability = { aidNotice = it }, intensity = intensity
             )
             Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { focusAction(it) } })
@@ -307,23 +415,32 @@ internal fun CameraScreen(
                     FocusStatus.UNAVAILABLE -> "对焦不可用"
                     else -> "正在对焦"
                 }
-                Column(Modifier.offset { IntOffset((point.x - focusHalfPx).roundToInt(), (point.y - focusHalfPx).roundToInt()) }) {
+                Column(Modifier.offset {
+                    val maxX = (viewfinderSize.width - focusFeedbackSize.width).coerceAtLeast(0)
+                    val maxY = (viewfinderSize.height - focusFeedbackSize.height).coerceAtLeast(0)
+                    IntOffset(
+                        (point.x - focusHalfPx).roundToInt().coerceIn(0, maxX),
+                        (point.y - focusHalfPx).roundToInt().coerceIn(0, maxY)
+                    )
+                }.onSizeChanged { focusFeedbackSize = it }) {
                     Box(Modifier.size(52.dp).border(1.dp, when (focus) {
-                        FocusStatus.FOCUSED -> Color(0xFFA2D8A1)
-                        FocusStatus.FAILED, FocusStatus.TIMEOUT, FocusStatus.UNAVAILABLE -> Color(0xFFFFA699)
-                        else -> Accent
+                        FocusStatus.FOCUSED -> ViewfinderTokens.focus
+                        FocusStatus.FAILED, FocusStatus.TIMEOUT, FocusStatus.UNAVAILABLE -> ViewfinderTokens.failure
+                        else -> ViewfinderTokens.accent
                     }, RoundedCornerShape(6.dp)))
-                    Text(state, Modifier.background(Panel).padding(horizontal = 3.dp), color = Ink, fontSize = 10.sp)
+                    Text(state, Modifier.background(screenPanel).padding(horizontal = 3.dp),
+                        color = screenInk, fontSize = 12.sp)
                 }
             }
         }
         }
-        BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeContent)) {
+        ViewfinderSystemBarScrims()
+        BoxWithConstraints(Modifier.fillMaxSize().safeAreaPadding()) {
             val landscape = maxWidth > maxHeight
             Column(Modifier.fillMaxSize()) {
                 CameraHeader(
                     activeMode = if (capabilities == null) mode else activeMode, capabilities = capabilities,
-                    modeEnabled = !busy && !applying, flash = flash, manualExposure = manual.iso != null,
+                    modeEnabled = !busy && !applying, flash = flash, manualExposure = manual.iso != null, panel = panel,
                     onFlash = {
                         val next = when (flash) {
                             ImageCapture.FLASH_MODE_OFF -> ImageCapture.FLASH_MODE_AUTO
@@ -344,14 +461,16 @@ internal fun CameraScreen(
                     BoxWithConstraints(modifier) {
                         val panelModifier = Modifier.align(Alignment.BottomCenter)
                             .widthIn(max = 600.dp).fillMaxWidth().heightIn(max = maxHeight)
-                            .background(Panel, RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
+                            .background(screenPanel, RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
                             .verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 5.dp)
                         if (panel == null) {
                             val statusText = when {
+                                bindError != null && rawMode -> "$bindError · RAW 已关闭，请从拍摄模式切换"
                                 bindError != null -> "$bindError · 点按重连默认镜头"
                                 remaining > 0 -> "$remaining"
                                 busy && focus == FocusStatus.FOCUSING -> "正在对焦"
-                                busy -> if (burst > 1) "连拍 ${completed + 1}/$burst" else "正在保存"
+                                busy -> if (shotCount > 1 && completed >= shotCount) "正在完成成片 $completed/$shotCount"
+                                    else if (shotCount > 1) "连拍 ${completed + 1}/$shotCount" else "正在保存"
                                 notice != null -> notice
                                 activeMode == CaptureMode.MACRO_ASSIST -> "点按近处主体对焦，缓慢调整拍摄距离"
                                 activeMode == CaptureMode.LONG_EXPOSURE_ASSIST -> "固定相机后启用倒计时。需要延长曝光时，可在 PRO 中调节快门。"
@@ -359,18 +478,18 @@ internal fun CameraScreen(
                             }
                             statusText?.let {
                                 val action = when {
-                                    bindError != null -> Modifier.clickable {
+                                    bindError != null && !rawMode -> Modifier.clickable {
                                         cameraId = null
-                                        mode = CaptureMode.AUTO
+                                        if (mode != CaptureMode.PRO) mode = CaptureMode.AUTO
                                         retry++
                                     }
                                     remaining > 0 -> Modifier.clickable { captureJob?.cancel() }
                                     else -> Modifier
                                 }
                                 Text(it, modifier = Modifier.align(Alignment.Center)
-                                    .background(Panel, RoundedCornerShape(12.dp)).then(action).padding(12.dp)
-                                    .semantics { liveRegion = LiveRegionMode.Polite },
-                                    color = Ink, fontSize = if (remaining > 0) 38.sp else 14.sp)
+                                    .background(screenPanel, RoundedCornerShape(12.dp)).then(action).padding(12.dp)
+                                    .statusLiveRegion(bindError != null || !busy && remaining == 0 && notice != null),
+                                    color = screenInk, fontSize = if (remaining > 0) 38.sp else 14.sp)
                             }
                         } else {
                             Column(panelModifier) {
@@ -389,6 +508,7 @@ internal fun CameraScreen(
                                                 applying = false
                                                 if (it == null) {
                                                     manual = value
+                                                    desiredManual = value
                                                     if (value.iso != null) flash = ImageCapture.FLASH_MODE_OFF
                                                 } else report("设备未接受手动参数")
                                             }
@@ -411,15 +531,27 @@ internal fun CameraScreen(
                                         onLive = { aids = aids.copy(styledPreview = !aids.styledPreview) })
                                     else -> Unit
                                 }
+                                if (bindError != null) Text(
+                                    if (rawMode) "$bindError · RAW 已关闭，请从拍摄模式切换"
+                                    else "$bindError · 收起面板后可重连默认镜头",
+                                    modifier = Modifier.statusLiveRegion(true),
+                                    color = screenAccent, fontSize = 12.sp)
                                 if (notice != null || busy) Text(
-                                    if (remaining > 0) "倒计时 $remaining 秒" else if (busy) "正在拍摄 ${completed + 1}/$burst" else notice.orEmpty(),
-                                    color = Accent, fontSize = 12.sp)
+                                    if (remaining > 0) "倒计时 $remaining 秒"
+                                    else if (busy && completed >= shotCount) "正在完成成片 $completed/$shotCount"
+                                    else if (busy) "正在拍摄 ${completed + 1}/$shotCount" else notice.orEmpty(),
+                                    modifier = Modifier.statusLiveRegion(!busy && remaining == 0 && notice != null),
+                                    color = screenAccent, fontSize = 12.sp)
                             }
                         }
                     }
                 }
                 val strip: @Composable () -> Unit = {
-                    CameraFilmSwitch(preset, capabilities, zoom, timer, burst, !busy) {
+                    if (rawMode) {
+                        Text("仅保存 DNG · $RAW_OUTPUT_DIRECTORY · 无胶片成片", Modifier.fillMaxWidth()
+                            .heightIn(min = 48.dp).background(screenPanel).padding(horizontal = 14.dp, vertical = 10.dp),
+                            color = screenInk, fontSize = 12.sp)
+                    } else CameraFilmSwitch(preset, capabilities, zoom, timer, burst, !busy, panel == CameraPanel.FILM) {
                         panel = if (panel == CameraPanel.FILM) null else CameraPanel.FILM
                     }
                 }
@@ -452,33 +584,54 @@ internal fun CameraScreen(
 internal data class CameraPane(val start: Int, val end: Int)
 
 internal fun unobstructedPane(size: Int, hingeStart: Int, hingeEnd: Int): CameraPane {
-    if (hingeStart <= 0 || hingeEnd < hingeStart || hingeEnd >= size) return CameraPane(0, size)
-    return if (hingeStart >= size - hingeEnd) CameraPane(0, hingeStart) else CameraPane(hingeEnd, size)
+    if (size <= 0) return CameraPane(0, size.coerceAtLeast(0))
+    val start = hingeStart.coerceIn(0, size)
+    val end = hingeEnd.coerceIn(0, size)
+    if (end < start || (start == end && (start == 0 || start == size))) return CameraPane(0, size)
+    return if (start >= size - end) CameraPane(0, start) else CameraPane(end, size)
 }
 
 @Composable
 private fun CameraHeader(
-    activeMode: CaptureMode, capabilities: DeviceCapabilities?, modeEnabled: Boolean, flash: Int, manualExposure: Boolean,
-    onFlash: () -> Unit, onSelect: (CaptureMode) -> Unit, onPro: () -> Unit,
-    onTools: () -> Unit, onSettings: () -> Unit
+    activeMode: CaptureMode, capabilities: DeviceCapabilities?, modeEnabled: Boolean, flash: Int,
+    manualExposure: Boolean, panel: CameraPanel?, onFlash: () -> Unit, onSelect: (CaptureMode) -> Unit,
+    onPro: () -> Unit, onTools: () -> Unit, onSettings: () -> Unit
 ) {
     var menu by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal = 2.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        val flashAllowed = !manualExposure && (activeMode == CaptureMode.AUTO || activeMode == CaptureMode.PRO)
-        CameraIcon(if (flash == ImageCapture.FLASH_MODE_AUTO) Icons.Default.FlashAuto else if (flash == ImageCapture.FLASH_MODE_ON) Icons.Default.FlashOn else Icons.Default.FlashOff,
-            "闪光灯", modeEnabled && capabilities?.supportsFlash == true && flashAllowed, onFlash, flash != ImageCapture.FLASH_MODE_OFF)
-        Box(Modifier.weight(1f)) {
-            Row(Modifier.clip(RoundedCornerShape(8.dp)).clickable(enabled = modeEnabled) { menu = true }
-                .heightIn(min = 48.dp).semantics { contentDescription = "拍摄模式" },
-                verticalAlignment = Alignment.CenterVertically) {
-                Text(activeMode.label, Modifier.weight(1f, fill = false), color = Accent,
+    val panelColor = Panel
+    val accent = Accent
+    val flashAllowed = !manualExposure && (activeMode == CaptureMode.AUTO || activeMode == CaptureMode.PRO)
+    val flashState = when (flash) {
+        ImageCapture.FLASH_MODE_AUTO -> "自动闪光"
+        ImageCapture.FLASH_MODE_ON -> "闪光灯已开启"
+        else -> "闪光灯已关闭"
+    }
+    val flashButton: @Composable () -> Unit = {
+        CameraIcon(
+            if (flash == ImageCapture.FLASH_MODE_AUTO) Icons.Default.FlashAuto
+            else if (flash == ImageCapture.FLASH_MODE_ON) Icons.Default.FlashOn else Icons.Default.FlashOff,
+            "闪光灯", modeEnabled && capabilities?.supportsFlash == true && flashAllowed, onFlash,
+            flash != ImageCapture.FLASH_MODE_OFF, stateDescription = flashState
+        )
+    }
+    val modeControl: @Composable (Modifier) -> Unit = { controlModifier ->
+        Box(controlModifier) {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                .clickable(enabled = modeEnabled) { menu = true }
+                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                .semantics {
+                    contentDescription = "拍摄模式"
+                    stateDescription = "${activeMode.label}；${if (menu) "已展开" else "已收起"}"
+                    role = Role.Button
+                }, verticalAlignment = Alignment.CenterVertically) {
+                Text(activeMode.label, Modifier.weight(1f), color = accent,
                     fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Icon(Icons.Default.ArrowDropDown, null, tint = Accent)
+                Icon(Icons.Default.ArrowDropDown, null, tint = accent)
             }
             DropdownMenu(menu, onDismissRequest = { menu = false }) {
                 val modes = listOf(
                     Triple(CaptureMode.AUTO, "自动", true), Triple(CaptureMode.PRO, "专业", true),
+                    Triple(CaptureMode.RAW, CaptureMode.RAW.label, capabilities?.rawAvailability == RawAvailability.AVAILABLE),
                     Triple(CaptureMode.HDR_EXTENSION, "HDR 扩展", capabilities?.hdrExtensionAvailable == true),
                     Triple(CaptureMode.NIGHT_EXTENSION, "夜景扩展", capabilities?.nightExtensionAvailable == true),
                     Triple(CaptureMode.PORTRAIT_EXTENSION, "人像扩展", capabilities?.portraitExtensionAvailable == true),
@@ -488,48 +641,121 @@ private fun CameraHeader(
                     Triple(CaptureMode.LONG_EXPOSURE_ASSIST, "长曝光辅助 · 持稳指引", true)
                 )
                 modes.forEach { (value, text, enabled) ->
-                    DropdownMenuItem(text = { Text(if (enabled) text else "$text · 镜头不可用") }, enabled = enabled,
-                        onClick = { menu = false; onSelect(value) })
+                    DropdownMenuItem(
+                        text = { Text(if (enabled) text else "$text · 镜头不可用") },
+                        modifier = Modifier.semantics { selected = activeMode == value },
+                        trailingIcon = if (activeMode == value) {
+                            { Icon(Icons.Default.Check, contentDescription = "当前模式") }
+                        } else null,
+                        enabled = enabled, onClick = { menu = false; onSelect(value) }
+                    )
                 }
             }
         }
-        CameraIcon(Icons.Default.Tune, "专业模式", modeEnabled, onPro, activeMode == CaptureMode.PRO)
-        CameraIcon(Icons.Default.GridOn, "拍摄工具", modeEnabled, onTools)
-        CameraIcon(Icons.Default.Settings, "设置", modeEnabled, onSettings)
+    }
+    BoxWithConstraints(Modifier.fillMaxWidth().background(panelColor)) {
+        val compact = maxWidth < 420.dp || LocalDensity.current.fontScale >= 1.2f
+        if (compact) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 2.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    flashButton()
+                    modeControl(Modifier.weight(1f))
+                    CameraIcon(Icons.Default.Tune, "专业模式", modeEnabled, onPro, activeMode == CaptureMode.PRO,
+                        stateDescription = "${if (activeMode == CaptureMode.PRO) "当前专业模式" else "未选择专业模式"}；${if (panel == CameraPanel.PRO) "面板已展开" else "面板已收起"}")
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically) {
+                    CameraIcon(Icons.Default.GridOn, "拍摄工具", modeEnabled, onTools,
+                        stateDescription = if (panel == CameraPanel.TOOLS) "面板已展开" else "面板已收起")
+                    CameraIcon(Icons.Default.Settings, "设置", modeEnabled, onSettings)
+                }
+            }
+        } else {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                flashButton()
+                modeControl(Modifier.weight(1f))
+                CameraIcon(Icons.Default.Tune, "专业模式", modeEnabled, onPro, activeMode == CaptureMode.PRO,
+                    stateDescription = "${if (activeMode == CaptureMode.PRO) "当前专业模式" else "未选择专业模式"}；${if (panel == CameraPanel.PRO) "面板已展开" else "面板已收起"}")
+                CameraIcon(Icons.Default.GridOn, "拍摄工具", modeEnabled, onTools,
+                    stateDescription = if (panel == CameraPanel.TOOLS) "面板已展开" else "面板已收起")
+                CameraIcon(Icons.Default.Settings, "设置", modeEnabled, onSettings)
+            }
+        }
     }
 }
 
 @Composable
-internal fun CameraIcon(icon: ImageVector, name: String, enabled: Boolean, click: () -> Unit, active: Boolean = false) {
-    IconButton(onClick = click, enabled = enabled) {
-        Icon(icon, name, tint = when { !enabled -> Muted.copy(alpha = .65f); active -> Accent; else -> Ink })
+internal fun CameraIcon(
+    icon: ImageVector, name: String, enabled: Boolean, click: () -> Unit,
+    active: Boolean = false, stateDescription: String? = null
+) {
+    val ink = Ink
+    val muted = Muted
+    val accent = Accent
+    val iconState = stateDescription
+    IconButton(onClick = click, enabled = enabled,
+        modifier = Modifier.size(48.dp).semantics { iconState?.let { this.stateDescription = it } }) {
+        Icon(icon, name, tint = when { !enabled -> muted.copy(alpha = .65f); active -> accent; else -> ink })
     }
 }
 
 @Composable
 private fun CameraPanelHeading(title: String, close: () -> Unit) {
+    val ink = Ink
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, Modifier.weight(1f), color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        Text(title, Modifier.weight(1f), color = ink, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
         CameraIcon(Icons.Default.Close, "收起面板", true, close)
     }
 }
 
 @Composable
-private fun CameraFilmSwitch(preset: FilmPreset, caps: DeviceCapabilities?, zoom: Float, timer: Int, burst: Int, enabled: Boolean, click: () -> Unit) {
-    Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-        Row(Modifier.weight(1f).clickable(enabled = enabled, onClick = click)
-            .heightIn(min = 48.dp).semantics { contentDescription = "胶片风格" },
-            verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Filter, null, tint = Accent, modifier = Modifier.size(19.dp))
-            Text(preset.name, Modifier.padding(horizontal = 7.dp), color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 14.sp)
+private fun CameraFilmSwitch(
+    preset: FilmPreset, caps: DeviceCapabilities?, zoom: Float, timer: Int, burst: Int,
+    enabled: Boolean, expanded: Boolean, click: () -> Unit
+) {
+    val panelColor = Panel
+    val ink = Ink
+    val muted = Muted
+    val accent = Accent
+    val summary = buildList {
+        caps?.focalLengthsMm?.singleOrNull()?.let { add("${"%.1f".format(it)} mm") }
+        caps?.let { add("${"%.1f".format(zoom)}×") }
+        if (timer > 0) add("${timer}s")
+        if (burst > 1) add("$burst 张")
+    }.joinToString("  ")
+    BoxWithConstraints(Modifier.fillMaxWidth().background(panelColor).padding(horizontal = 14.dp)) {
+        val compact = maxWidth < 420.dp || LocalDensity.current.fontScale >= 1.2f
+        val summaryMaxWidth = maxWidth * .5f
+        val styleControl: @Composable (Modifier) -> Unit = { controlModifier ->
+            Row(controlModifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                .clickable(enabled = enabled, role = Role.Button, onClick = click)
+                .semantics {
+                    contentDescription = "胶片风格"
+                    stateDescription = "${preset.name}；${if (expanded) "面板已展开" else "面板已收起"}"
+                }.alpha(if (enabled) 1f else .55f), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Filter, null, tint = accent, modifier = Modifier.size(19.dp))
+                Text(preset.name, Modifier.weight(1f).padding(horizontal = 7.dp), color = ink,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 14.sp)
+            }
         }
-        Text(buildList {
-            caps?.focalLengthsMm?.singleOrNull()?.let { add("${"%.1f".format(it)} mm") }
-            caps?.let { add("${"%.1f".format(zoom)}×") }
-            if (timer > 0) add("${timer}s")
-            if (burst > 1) add("$burst 张")
-        }.joinToString("  "), color = Muted, fontSize = 12.sp)
+        if (compact) {
+            Column(Modifier.fillMaxWidth()) {
+                styleControl(Modifier.fillMaxWidth())
+                if (summary.isNotEmpty()) Text(summary, Modifier.fillMaxWidth()
+                    .padding(start = 7.dp, bottom = 6.dp)
+                    .semantics { contentDescription = "拍摄信息"; stateDescription = summary },
+                    color = muted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        } else {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                styleControl(Modifier.weight(1f))
+                if (summary.isNotEmpty()) Text(summary, Modifier.widthIn(max = summaryMaxWidth)
+                    .padding(start = 6.dp)
+                    .semantics { contentDescription = "拍摄信息"; stateDescription = summary },
+                    color = muted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.End)
+            }
+        }
     }
 }
 
@@ -539,18 +765,25 @@ private fun CameraActions(
     canOpenGallery: Boolean, latestCapture: String?, cameraState: String,
     canSwitch: Boolean, capture: () -> Unit, gallery: () -> Unit, switchLens: () -> Unit
 ) {
+    val panelColor = Panel
+    val ink = Ink
+    val muted = Muted
     val galleryButton: @Composable () -> Unit = { GalleryShortcut(latestCapture, canOpenGallery, gallery) }
     val switchButton: @Composable () -> Unit = { CameraIcon(Icons.Default.Cameraswitch, "切换镜头", canSwitch, switchLens) }
     val shutter: @Composable () -> Unit = {
-        Box(Modifier.size(68.dp).clip(CircleShape).border(2.dp, if (ready) Ink else Muted, CircleShape)
+        Box(Modifier.size(68.dp).clip(CircleShape).border(2.dp, if (ready) ink else muted, CircleShape)
             .clickable(enabled = ready, role = Role.Button, onClick = capture)
-            .semantics { contentDescription = "拍照"; stateDescription = cameraState }
-            .padding(6.dp).background(if (ready) Ink else Muted, CircleShape))
+            .semantics {
+                contentDescription = "拍照"
+                stateDescription = if (ready) "可拍摄；$cameraState" else "相机未就绪；$cameraState"
+            }
+            .padding(6.dp).background(if (ready) ink else muted, CircleShape))
     }
     if (vertical) {
-        BoxWithConstraints(Modifier.fillMaxHeight().background(Panel)) {
+        BoxWithConstraints(Modifier.fillMaxHeight().background(panelColor)) {
             if (maxHeight < 176.dp) {
-                Column(Modifier.fillMaxHeight().width(104.dp), Arrangement.SpaceEvenly, Alignment.CenterHorizontally) {
+                Column(Modifier.fillMaxHeight().width(104.dp).verticalScroll(rememberScrollState()),
+                    Arrangement.SpaceEvenly, Alignment.CenterHorizontally) {
                     Row { galleryButton(); switchButton() }
                     shutter()
                 }
@@ -559,7 +792,7 @@ private fun CameraActions(
             }
         }
     } else {
-        Row(Modifier.fillMaxWidth().background(Panel).heightIn(min = 80.dp),
+        Row(Modifier.fillMaxWidth().background(panelColor).heightIn(min = 80.dp),
             Arrangement.SpaceAround, Alignment.CenterVertically) { galleryButton(); shutter(); switchButton() }
     }
 }
@@ -567,6 +800,8 @@ private fun CameraActions(
 @Composable
 private fun GalleryShortcut(uri: String?, enabled: Boolean, open: () -> Unit) {
     val resolver = LocalContext.current.contentResolver
+    val ink = Ink
+    val muted = Muted
     val edge = with(LocalDensity.current) { 38.dp.roundToPx().coerceAtLeast(1) }
     IconButton(onClick = open, enabled = enabled,
         modifier = Modifier.size(48.dp).semantics { contentDescription = "作品" }) {
@@ -578,9 +813,10 @@ private fun GalleryShortcut(uri: String?, enabled: Boolean, open: () -> Unit) {
             }
             val image = thumbnail
             if (image == null) {
-                Icon(Icons.Default.PhotoLibrary, null, tint = if (enabled) Ink else Muted)
+                Icon(Icons.Default.PhotoLibrary, null, tint = if (enabled) ink else muted)
             } else {
-                Image(image.asImageBitmap(), null, Modifier.size(38.dp).clip(RoundedCornerShape(7.dp)),
+                Image(image.asImageBitmap(), null,
+                    Modifier.size(38.dp).clip(RoundedCornerShape(7.dp)).alpha(if (enabled) 1f else .55f),
                     contentScale = ContentScale.Crop)
             }
         }

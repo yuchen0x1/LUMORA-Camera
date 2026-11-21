@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <!-- Keep the same explicit scope for cloud backup and device-to-device transfer.
+         Preserve the gallery index, source choices, recovery snapshots and update choice.
+         Only the two included files are backed up; the transient capture journal is not.
+         Its MediaStore IDs are device-local. This does not clear local recovery data.
+         MediaStore photos and URI grants are not app files and are not restored by these rules. -->
+    <cloud-backup>
+        <include domain="sharedpref" path="lumora_preferences.xml" />
+        <include domain="sharedpref" path="lumora_updates.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="sharedpref" path="lumora_preferences.xml" />
+        <include domain="sharedpref" path="lumora_updates.xml" />
+    </device-transfer>
+</data-extraction-rules>

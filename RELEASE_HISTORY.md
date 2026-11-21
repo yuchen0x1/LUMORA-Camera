@@ -2,6 +2,15 @@
 
 以 GitHub Release 和签名资产的真实状态为准，不将标签存在、候选元数据、调试 APK 或未完成流水线称为正式发布。
 
+## 当前进度：2.1.7 / code 11（未发布候选，2026-11-21）
+
+- **公开稳定版仍为 v2.1.6 / code 10。** 2.1.7 / code 11 未推送、打正式标签或发布，源码提交以 git HEAD 为准；CHANGELOG 候选节不是正式分发证据。公开 main `717a5fa` 的既有复核不表示候选已进入主线。
+- EOF 空行清理后重建的构建/Lint 与 JVM 53/53 实际重跑通过；生产逻辑未改，但新 Debug/未签名 APK 摘要变化，故按新的冻结产物完整重跑本地门禁。当前精确 Debug/test APK 已通过 API 29/35 默认矩阵 150/151、双 API 真实安装器取消、360dp/fontScale 200%、100 张耐久/200 JPEG 与平板 8/8。
+- 人工 fixed-width floating LIGHT 白图标有独立 caveat；安装器 fixture 不覆盖 UpdateDialog、网络/递增版本门禁、实体设备或多窗口。当前未签名 APK 的静态扫描唯一高危项为预期的 unsigned `APK-SIG`，明确不可作为正式分发资产；有界清单与边界见 [TEST_REPORT](docs/TEST_REPORT.md)。本地通过不替代远程 CI、实际 CodeQL（java-kotlin / python / actions）、受保护签名/公开资产或 2.1.6→2.1.7 正式覆盖升级。
+- URI 授权回收、提供方阻塞、实体硬件、厂商 AF 与 12/48 MP 内存等边界不因此关闭，也不复用下方历史发布证据替候选背书。
+
+## 历史发布记录
+
 | 版本 | 状态 | 证据 |
 | --- | --- | --- |
 | v2.0.0 | 历史调试签名预发布，非正式稳定版 | GitHub 公开资产只有 LUMORA-Camera-2.0.0-debug-test.apk；保留历史标签和资产。 |

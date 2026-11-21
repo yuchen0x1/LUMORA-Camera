@@ -6,8 +6,12 @@ import android.content.ContentResolver
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.graphics.ColorSpace
 import android.graphics.ImageDecoder
+import android.graphics.Matrix
+import android.graphics.Paint
+import android.graphics.Rect
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
@@ -51,7 +55,11 @@ object PhotoEnhancementEngine {
     ): EnhancementResult? = process(resolver, source, preset, strength, displayName, cameraId,
         lensFacing, mode, edits, jpegQuality, intensity).getOrNull()
 
-    /** Serializes full-sized allocations across capture, import and re-edit operations. Call on IO. */
+    /**
+     * Serializes full-sized allocations across capture, import and re-edit operations. Call on IO.
+     * Pass the original source for each version to avoid accumulating JPEG generations. A JPEG
+     * source still needs one lossy encode per render (even at quality 100).
+     */
     @Synchronized
     fun process(
         resolver: ContentResolver, source: Uri, preset: FilmPreset, strength: OptimizationStrength,
@@ -69,24 +77,18 @@ object PhotoEnhancementEngine {
             val exif = readExif(resolver, source, input.mime)
             val facts = sourceRecord(input, exif, cameraId, lensFacing, mode)
             val runtime = Runtime.getRuntime()
-            val headroom = runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
+            val usedHeap = runtime.totalMemory() - runtime.freeMemory()
+            val headroom = runtime.maxMemory() - usedHeap
+            val managedBudget = managedProcessingBudget(runtime.maxMemory(), usedHeap)
             val nativeBudget = nativeBudget(memoryContext, runtime.maxMemory())
-            val accepted = fitsBitmapBudget(input.width, input.height, nativeBudget, headroom)
+            val accepted = fitsBitmapBudget(input.width, input.height, nativeBudget, managedBudget)
             Log.i("LumoraCapture", "memory size=${input.width}x${input.height} heapMax=${runtime.maxMemory()} " +
-                "managedAvailable=$headroom nativeBudget=$nativeBudget accepted=$accepted")
+                "managedAvailable=$headroom managedBudget=$managedBudget nativeBudget=$nativeBudget accepted=$accepted")
             if (!accepted) {
                 throw EnhancementFailure(EnhancementStage.MEMORY)
             }
             stage = EnhancementStage.DECODE
-            val options = BitmapFactory.Options().apply {
-                inPreferredConfig = Bitmap.Config.ARGB_8888
-                inPreferredColorSpace = sRGB
-                inMutable = true
-                inSampleSize = 1
-                inScaled = false
-            }
-            val bitmap = resolver.openInputStream(source)?.use { BitmapFactory.decodeStream(it, null, options) }
-                ?: throw IOException("无法读取原图像素")
+            val bitmap = decodeRaw(resolver, source, sampleSize = 1)
             try {
                 check(bitmap.width == input.width && bitmap.height == input.height)
                 stage = EnhancementStage.PROCESS
@@ -157,6 +159,13 @@ object PhotoEnhancementEngine {
         } catch (_: Exception) { fallback }
     }
 
+    /** Spare heap excludes reclaimable objects. Let ART collect for small, bounded row allocations. */
+    internal fun managedProcessingBudget(maxHeap: Long, usedHeap: Long): Long {
+        val limit = maxHeap.coerceAtLeast(0)
+        val headroom = (limit - usedHeap.coerceAtLeast(0)).coerceAtLeast(0)
+        return maxOf(headroom, limit / 8)
+    }
+
     internal fun fitsBitmapBudget(
         width: Int, height: Int, nativeAvailable: Long, managedAvailable: Long = nativeAvailable
     ): Boolean {
@@ -171,34 +180,91 @@ object PhotoEnhancementEngine {
         return nativeAvailable >= bitmapBytes + nativeScratch && managedAvailable >= managedScratch
     }
 
-    /** ImageDecoder honors EXIF orientation. Only this preview path scales to display size. */
+    /** Only previews downsample. Film effects run in encoded coordinates before EXIF orientation. */
     fun renderPreview(
         resolver: ContentResolver, source: Uri, maxEdge: Int, preset: FilmPreset? = null,
         strength: OptimizationStrength = OptimizationStrength.STANDARD,
         edits: PhotoEditParameters = PhotoEditParameters.NATURAL, intensity: Float = 1f
-    ): Bitmap? {
-        require(maxEdge > 0)
-        var bitmap: Bitmap? = null
-        return try {
-            val decoded = ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, source)) { decoder, info, _ ->
-                val width = info.size.width
-                val height = info.size.height
-                val scale = minOf(1.0, maxEdge.toDouble() / max(width, height))
-                decoder.setTargetSize(max(1, (width * scale).roundToInt()), max(1, (height * scale).roundToInt()))
+    ): Bitmap? = previewWithFallback(maxEdge) { edge ->
+        if (preset == null) {
+            ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, source)) { decoder, info, _ ->
+                val (width, height) = previewSize(info.size.width, info.size.height, edge)
+                decoder.setTargetSize(width, height)
                 decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-                decoder.isMutableRequired = preset != null
                 decoder.setTargetColorSpace(sRGB)
             }
-            bitmap = decoded
-            if (preset != null) FilmColorEngine.applyInPlace(decoded, preset, strength, edits, intensity)
-            decoded
-        } catch (_: Exception) {
-            bitmap?.recycle()
-            null
-        } catch (_: OutOfMemoryError) {
-            bitmap?.recycle()
-            null
+        } else {
+            renderStyledPreview(resolver, source, edge, preset, strength, edits, intensity)
         }
+    }
+
+    /** Allocation failures may degrade a preview, never a full-size export. Each attempt owns its bitmaps. */
+    internal fun <T> previewWithFallback(maxEdge: Int, render: (Int) -> T): T? {
+        require(maxEdge > 0)
+        var edge = maxEdge
+        while (true) {
+            try {
+                return render(edge)
+            } catch (_: OutOfMemoryError) {
+                if (edge == 1) return null
+                edge = (edge / 2).coerceAtLeast(1)
+            } catch (_: Exception) {
+                return null
+            }
+        }
+    }
+
+    private fun renderStyledPreview(
+        resolver: ContentResolver, source: Uri, maxEdge: Int, preset: FilmPreset,
+        strength: OptimizationStrength, edits: PhotoEditParameters, intensity: Float
+    ): Bitmap {
+        val bounds = decodeBounds(resolver, source)
+        val (width, height) = previewSize(bounds.outWidth, bounds.outHeight, maxEdge)
+        val orientation = readExif(resolver, source, bounds.outMimeType)
+            ?.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        // Subsample at decode; the intermediate's longest edge is roughly at most 2 * maxEdge.
+        val sampleSize = Integer.highestOneBit((max(bounds.outWidth, bounds.outHeight) / maxEdge).coerceAtLeast(1))
+        var working = decodeRaw(resolver, source, sampleSize)
+        var result: Bitmap? = null
+        try {
+            if (working.width != width || working.height != height) {
+                val sampled = working
+                working = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                try {
+                    Canvas(working).drawBitmap(sampled, null, Rect(0, 0, width, height), Paint(Paint.FILTER_BITMAP_FLAG))
+                } finally {
+                    sampled.recycle()
+                }
+            }
+            FilmColorEngine.applyInPlace(working, preset, strength, edits, intensity)
+            // An export keeps the raw pixel order and puts this same transform in its EXIF tag.
+            val oriented = if (orientation == null) working else orient(working, orientation)
+            result = oriented
+            return oriented
+        } finally {
+            if (working !== result) working.recycle()
+        }
+    }
+
+    private fun previewSize(width: Int, height: Int, maxEdge: Int): Pair<Int, Int> {
+        val scale = minOf(1.0, maxEdge.toDouble() / max(width, height))
+        return max(1, (width * scale).roundToInt()) to max(1, (height * scale).roundToInt())
+    }
+
+    private fun orient(bitmap: Bitmap, orientation: Int): Bitmap {
+        val matrix = Matrix().apply {
+            when (orientation) {
+                ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> setScale(-1f, 1f)
+                ExifInterface.ORIENTATION_ROTATE_180 -> setRotate(180f)
+                ExifInterface.ORIENTATION_FLIP_VERTICAL -> setScale(1f, -1f)
+                ExifInterface.ORIENTATION_TRANSPOSE -> { setRotate(90f); postScale(-1f, 1f) }
+                ExifInterface.ORIENTATION_ROTATE_90 -> setRotate(90f)
+                ExifInterface.ORIENTATION_TRANSVERSE -> { setRotate(270f); postScale(-1f, 1f) }
+                ExifInterface.ORIENTATION_ROTATE_270 -> setRotate(270f)
+                else -> return bitmap
+            }
+        }
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, false)
     }
 
     internal fun <T> withPendingJpeg(resolver: ContentResolver, name: String, write: (Uri) -> T): T {
@@ -229,10 +295,27 @@ object PhotoEnhancementEngine {
 
     private data class FileFacts(val width: Int, val height: Int, val mime: String, val bytes: Long)
 
-    private fun measure(resolver: ContentResolver, uri: Uri): FileFacts {
+    private fun decodeBounds(resolver: ContentResolver, uri: Uri): BitmapFactory.Options {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0 || bounds.outMimeType == null) throw IOException("图像格式无法识别")
+        return bounds
+    }
+
+    private fun decodeRaw(resolver: ContentResolver, uri: Uri, sampleSize: Int): Bitmap {
+        val options = BitmapFactory.Options().apply {
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+            inPreferredColorSpace = sRGB
+            inMutable = true
+            inSampleSize = sampleSize
+            inScaled = false
+        }
+        return resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+            ?: throw IOException("无法读取原图像素")
+    }
+
+    private fun measure(resolver: ContentResolver, uri: Uri): FileFacts {
+        val bounds = decodeBounds(resolver, uri)
         val descriptorBytes = resolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
         // Pipe-backed document providers are allowed to omit the descriptor length.
         val bytes = descriptorBytes?.takeIf { it >= 0L } ?: resolver.openInputStream(uri)?.use { stream ->
@@ -260,14 +343,19 @@ object PhotoEnhancementEngine {
         )
     }
 
+    private val exifMimes = setOf("image/jpeg", "image/png", "image/webp", "image/heif", "image/heic", "image/x-adobe-dng")
+
     private fun readExif(resolver: ContentResolver, uri: Uri, mime: String): ExifInterface? =
-        if (mime in setOf("image/jpeg", "image/png", "image/webp", "image/heif", "image/heic", "image/x-adobe-dng")) {
+        if (mime in exifMimes) {
             resolver.openInputStream(uri)?.use { ExifInterface(it) } ?: throw IOException("无法读取图像元数据")
         } else null
 
+    // Only capture tags; don't carry over location, thumbnails, or source pixel dimensions.
     private val copyTags = listOf(
-        ExifInterface.TAG_ORIENTATION, ExifInterface.TAG_DATETIME, ExifInterface.TAG_DATETIME_ORIGINAL,
-        ExifInterface.TAG_DATETIME_DIGITIZED, ExifInterface.TAG_SUBSEC_TIME_ORIGINAL, ExifInterface.TAG_OFFSET_TIME_ORIGINAL,
+        ExifInterface.TAG_ORIENTATION,
+        ExifInterface.TAG_DATETIME, ExifInterface.TAG_SUBSEC_TIME, ExifInterface.TAG_OFFSET_TIME,
+        ExifInterface.TAG_DATETIME_ORIGINAL, ExifInterface.TAG_SUBSEC_TIME_ORIGINAL, ExifInterface.TAG_OFFSET_TIME_ORIGINAL,
+        ExifInterface.TAG_DATETIME_DIGITIZED, ExifInterface.TAG_SUBSEC_TIME_DIGITIZED, ExifInterface.TAG_OFFSET_TIME_DIGITIZED,
         ExifInterface.TAG_MAKE, ExifInterface.TAG_MODEL, ExifInterface.TAG_LENS_MODEL,
         ExifInterface.TAG_EXPOSURE_TIME, ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY, ExifInterface.TAG_F_NUMBER,
         ExifInterface.TAG_EXPOSURE_BIAS_VALUE, ExifInterface.TAG_FLASH, ExifInterface.TAG_WHITE_BALANCE,

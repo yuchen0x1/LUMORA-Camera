@@ -1,5 +1,19 @@
 # 安全审查
 
+## 2.1.7 / code 11 候选加固（2026-11-21，未发布；当前本地门禁通过）
+
+公开稳定版仍为 2.1.6 / code 10；以下记录本轮本地实现与有界静态证据，不是最终安全验收，下方历史审查与 2.1.6 的备份策略证据保留。
+
+- DocumentFile 1.1.0、可信来源的新 Gradle 9.1.0 Wrapper、STRICT 锁/校验已接入；官方 SHA-256 审计 **919/919、0 mismatches/bypasses**，校验元数据 `SHA800c2a465d9b37c1495a35347c9e92662d85113995b0939c8f54702d740c4b5e`。该占位符保留原始 Windows-CRLF 审计快照；提交 Git-LF 归一化摘要为 `cd23b0bdc4638ff9235e931085591f7d9a9a350581448f30bd0d56dd44209352`，仅换行差异且 919 条 XML 条目未变。来源一致不等于漏洞扫描或 CodeQL 通过。
+- `allowBackup=true` 为有意的受限策略：云备份与设备迁移仅允许 `lumora_preferences.xml` / `lumora_updates.xml`，日志因未入白名单而隐式排除；宽泛 FullBackupContent suppression 已移除，无 suppression 严格 Lint 通过。真实备份迁移未验收，偏好中的索引/恢复引用仍须按隐私含义评估。
+- EOF 清理后重建的构建/Lint 与 JVM 53/53 实际重新执行通过。准确新 Debug/test APK 通过 API 29/35 默认集 **150/151**、真实安装器取消、360dp/fontScale 200%、100 张耐久/200 JPEG 与平板 8/8；全部摘要及报告见 [TEST_REPORT](docs/TEST_REPORT.md)。测试不覆盖网络/archive/递增版本门禁、UpdateDialog、实体设备或多窗口。
+- 当前未签名 Release APK `232983df7f9ef902a1565e870b59c50ad2610c55fa051b9c10e32495803f9c8f`（50,442,871 B）单独重扫暴露面 **86/B**；`--fail-on high` 预期因唯一高项 APK-SIG（无签名，本地中间包）返回 1。该 APK 明确不可分发。身份、non-debuggable、导出组件权限、窄 FileProvider 路径、备份资源及归档候选均已在 `D:/BuildTemp/lumora217-staged-exposure-_5dc_veo/verification-report.txt` 有界核对；无已确认的发布 APK 凭证命中，但静态 pattern scan 不能证明无秘密。扫描分数不是密码学验签、无漏洞证明或正式分发许可；后续受保护签名包为不同摘要，须另行验签和审查。
+- 2.1.7 / code 11 未推送/打正式标签/发布，提交以 git HEAD 为准；远程 CI、实际 CodeQL/告警结果、受保护签名/公开资产与正式升级未完成。URI 授权回收、提供方阻塞、实体硬件、厂商 AF/扩展、12/48 MP 内存与实体安装器/多窗口仍开放。
+
+完整审计来源、当前未签名 APK 摘要、失败与历史快照边界见 [TEST_REPORT](docs/TEST_REPORT.md)，不以局部静态扫描或本地通过声称积压全关或绝对安全。
+
+## 历史安全审查（保留原证据）
+
 审查日期：2026-11-21（本地时间）。对象：本仓库源码、自有 APK 及 GitHub 构建/发布链。无第三方渗透或漏洞利用。以下是范围化证据，不是“没有任何漏洞”的保证；未生成量化安全评分。
 
 ## 1. 总览

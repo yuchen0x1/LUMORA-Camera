@@ -19,10 +19,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -142,33 +144,48 @@ fun PhotographyOverlay(
             sensorStatus = null
         }
     }
-    Canvas(modifier.fillMaxSize()) {
+    val levelDescription = when {
+        !aids.level -> ""
+        roll == null -> sensorStatus ?: "等待方向传感器"
+        abs(roll!!) <= 1.5f -> "已水平"
+        else -> "倾斜 ${abs(roll!!).roundToInt()}°"
+    }
+    val levelSemantics = if (aids.level) Modifier.semantics {
+        contentDescription = "水平仪"
+        stateDescription = levelDescription
+    } else Modifier
+    Canvas(modifier.fillMaxSize().then(levelSemantics)) {
         val target = IntSize(size.width.roundToInt(), size.height.roundToInt())
         val sample = frame
         sample?.style?.let { drawImage(it.asImageBitmap(), dstSize = target) }
         sample?.marks?.let { drawImage(it.asImageBitmap(), dstSize = target) }
         if (aids.grid != CompositionGrid.OFF) {
-            val line = Color.White.copy(alpha = 0.54f)
+            val line = ViewfinderTokens.ink.copy(alpha = 0.92f)
+            val outline = ViewfinderTokens.scrim
             val fraction = aids.grid.fraction
             for (part in listOf(fraction, 1f - fraction)) {
                 val x = size.width * part
                 val y = size.height * part
+                drawLine(outline, Offset(x, 0f), Offset(x, size.height), 2.dp.toPx())
                 drawLine(line, Offset(x, 0f), Offset(x, size.height), 0.8.dp.toPx())
+                drawLine(outline, Offset(0f, y), Offset(size.width, y), 2.dp.toPx())
                 drawLine(line, Offset(0f, y), Offset(size.width, y), 0.8.dp.toPx())
             }
         }
         if (aids.level) roll?.let { angle ->
             val length = min(size.width * 0.18f, 62.dp.toPx())
-            val guide = Color.White.copy(alpha = 0.7f)
+            val guide = ViewfinderTokens.ink.copy(alpha = 0.9f)
             for (sign in listOf(-1f, 1f)) {
-                drawLine(guide, Offset(center.x + sign * length * 0.72f, center.y),
-                    Offset(center.x + sign * length, center.y), 2.dp.toPx())
+                val from = Offset(center.x + sign * length * 0.72f, center.y)
+                val to = Offset(center.x + sign * length, center.y)
+                drawLine(ViewfinderTokens.scrim, from, to, 3.dp.toPx())
+                drawLine(guide, from, to, 1.5.dp.toPx())
             }
             rotate(angle, center) {
                 val from = Offset(center.x - length * 0.68f, center.y)
                 val to = Offset(center.x + length * 0.68f, center.y)
-                drawLine(Color.Black.copy(alpha = 0.6f), from, to, 4.dp.toPx())
-                drawLine(if (abs(angle) <= 1.5f) Color(0xFF7FE3A5) else Color(0xFFFFCD71),
+                drawLine(ViewfinderTokens.scrim, from, to, 4.dp.toPx())
+                drawLine(if (abs(angle) <= 1.5f) ViewfinderTokens.focus else ViewfinderTokens.accent,
                     from, to, 2.dp.toPx())
             }
         }
@@ -181,7 +198,7 @@ private fun DrawScope.drawHistogram(bins: IntArray) {
     val height = min(44.dp.toPx(), size.height * 0.15f)
     val left = 14.dp.toPx()
     val top = size.height * 0.28f
-    drawRoundRect(Color.Black.copy(alpha = 0.65f), Offset(left, top), Size(width, height),
+    drawRoundRect(ViewfinderTokens.scrim, Offset(left, top), Size(width, height),
         CornerRadius(4.dp.toPx()))
     val padding = 4.dp.toPx()
     val binWidth = (width - 2f * padding) / bins.size
@@ -189,7 +206,7 @@ private fun DrawScope.drawHistogram(bins: IntArray) {
     val peak = bins.maxOrNull()?.coerceAtLeast(1) ?: return
     for (i in bins.indices) {
         val bar = sqrt(bins[i].toFloat() / peak) * (height - 2f * padding)
-        drawRect(Color(0xFFE9E5DB), Offset(left + padding + i * binWidth, top + height - padding - bar),
+        drawRect(ViewfinderTokens.ink, Offset(left + padding + i * binWidth, top + height - padding - bar),
             Size(binWidth, bar))
     }
 }

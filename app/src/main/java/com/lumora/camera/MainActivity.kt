@@ -1,11 +1,15 @@
 package com.lumora.camera
 
 import android.Manifest
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -26,6 +30,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -34,17 +40,26 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lumora.camera.camera.DeviceCapabilities
+import com.lumora.camera.data.CaptureJournal
+import com.lumora.camera.data.CaptureReconciliation
 import com.lumora.camera.data.FilmPreset
 import com.lumora.camera.data.FilmPresets
 import com.lumora.camera.data.PhotoRepository
+import com.lumora.camera.ui.AppThemeMode
+import com.lumora.camera.ui.DarkColors
+import com.lumora.camera.ui.LightColors
+import com.lumora.camera.ui.LumoraTheme
+import com.lumora.camera.ui.safeAreaPadding
 import com.lumora.camera.update.UpdateDialog
 import com.lumora.camera.update.UpdateViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-internal val Ink = Color(0xFFF4F1EB)
-internal val Muted = Color(0xFFB1AEA8)
-internal val Panel = Color(0xE0191918)
-internal val Accent = Color(0xFFD6B27A)
-internal val Background = Color(0xFF101110)
+internal val Ink: Color @Composable get() = MaterialTheme.colorScheme.onSurface
+internal val Muted: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+internal val Panel: Color @Composable get() = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = .94f)
+internal val Accent: Color @Composable get() = MaterialTheme.colorScheme.primary
+internal val Background: Color @Composable get() = MaterialTheme.colorScheme.background
 
 class CameraDeviceState : ViewModel() {
     var lastLens by mutableStateOf<DeviceCapabilities?>(null)
@@ -54,19 +69,23 @@ class MainActivity : ComponentActivity() {
     internal var volumeShutter: (() -> Unit)? = null
     private val shutterKeys = mutableSetOf<Int>()
 
+    private var darkSystemBars = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
-        )
-        setContent {
-            MaterialTheme(colorScheme = darkColorScheme(
-                primary = Accent, onPrimary = Background, background = Background,
-                surface = Background, onBackground = Ink, onSurface = Ink,
-                surfaceVariant = Color(0xFF282927), onSurfaceVariant = Muted
-            )) { LumoraApp() }
-        }
+        updateSystemBars(dark = true)
+        setContent { LumoraApp() }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Keep the transparent bars' backing and foreground in sync after focus/resize changes.
+        if (hasFocus) updateSystemBars(darkSystemBars)
+    }
+
+    internal fun updateSystemBars(dark: Boolean) {
+        darkSystemBars = dark
+        applySystemBarAppearance(dark)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
@@ -95,6 +114,8 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun LumoraApp() {
+        val settings = remember { CameraSettings(applicationContext) }
+        var themeMode by remember { mutableStateOf(settings.themeMode) }
         val repository = remember { PhotoRepository(applicationContext) }
         val presets = remember { FilmPresets.load(applicationContext) }
         val device: CameraDeviceState = viewModel()
@@ -115,8 +136,29 @@ class MainActivity : ComponentActivity() {
             lifecycle.addObserver(observer)
             onDispose { lifecycle.removeObserver(observer) }
         }
+        // Reconcile captures interrupted by process death without blocking app navigation.
+        LaunchedEffect(repository) {
+            withContext(Dispatchers.IO) {
+                val outcome = runCatching {
+                    CaptureReconciliation.run(
+                        applicationContext, CaptureJournal(applicationContext), repository,
+                        isActive = CameraOutput::isCaptureActive
+                    )
+                }.getOrElse { "unavailable" }
+                Log.i("LumoraCapture", "startupReconciliation $outcome")
+            }
+        }
         val openSettings = !granted && asked && !shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)
-        LumoraNavigation(repository, presets, device, updates, granted, openSettings) {
+        LumoraNavigation(
+            repository, presets, device, updates,
+            cameraGranted = granted,
+            openSystemSettings = openSettings,
+            themeMode = themeMode,
+            onThemeChange = {
+                settings.themeMode = it
+                themeMode = it
+            }
+        ) {
             if (openSettings) {
                 startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
             } else {
@@ -126,34 +168,73 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class AppScreen { CAMERA, GALLERY, SETTINGS }
+internal enum class AppScreen { CAMERA, GALLERY, SETTINGS }
+
+private fun ComponentActivity.applySystemBarAppearance(dark: Boolean) {
+    // A resized window can expose this backing beneath transparent system bars. XML day/night
+    // resources follow the device theme, not Lumora's explicit Compose theme selection.
+    val colors = if (dark) DarkColors else LightColors
+    window.setBackgroundDrawable(ColorDrawable(colors.background.toArgb()))
+    val transparent = android.graphics.Color.TRANSPARENT
+    val bars = if (dark) SystemBarStyle.dark(transparent)
+    else SystemBarStyle.light(transparent, transparent)
+    enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+}
+
+/** 沿 ContextWrapper 链找到宿主 ComponentActivity，用于按主题刷新系统栏。 */
+private fun Context.findComponentActivity(): ComponentActivity? {
+    var context: Context? = this
+    while (context is ContextWrapper) {
+        if (context is ComponentActivity) return context
+        context = context.baseContext
+    }
+    return null
+}
 
 @Composable
 internal fun LumoraNavigation(
     repository: PhotoRepository, presets: List<FilmPreset>, device: CameraDeviceState, updates: UpdateViewModel,
-    cameraGranted: Boolean, openSystemSettings: Boolean, onEnableCamera: () -> Unit
+    cameraGranted: Boolean, openSystemSettings: Boolean,
+    themeMode: AppThemeMode = AppThemeMode.SYSTEM, onThemeChange: (AppThemeMode) -> Unit = {},
+    onEnableCamera: () -> Unit
 ) {
     val savedScreens = rememberSaveableStateHolder()
     var screen by rememberSaveable { mutableStateOf(AppScreen.CAMERA) }
     val backToCamera = { screen = AppScreen.CAMERA }
-    BackHandler(enabled = screen != AppScreen.CAMERA, onBack = backToCamera)
-    Surface(Modifier.fillMaxSize()) {
-        when (screen) {
-            AppScreen.CAMERA -> {
-                val openGallery = { screen = AppScreen.GALLERY }
-                val openSettings = { screen = AppScreen.SETTINGS }
-                if (cameraGranted) {
-                    savedScreens.SaveableStateProvider("viewfinder") {
-                        CameraScreen(repository, presets, openGallery, openSettings) { device.lastLens = it }
-                    }
-                } else {
-                    CameraPermissionScreen(openSystemSettings, onEnableCamera, openGallery, openSettings)
-                }
-            }
-            AppScreen.GALLERY -> GalleryScreen(repository, backToCamera)
-            AppScreen.SETTINGS -> SettingsScreen(repository, device.lastLens, updates, backToCamera)
+    val activity = LocalContext.current.findComponentActivity()
+    val darkBars = themeMode.isDark() || (cameraGranted && screen == AppScreen.CAMERA)
+    SideEffect {
+        when (activity) {
+            is MainActivity -> activity.updateSystemBars(darkBars)
+            null -> Unit
+            else -> activity.applySystemBarAppearance(darkBars)
         }
-        UpdateDialog(updates)
+    }
+    BackHandler(enabled = screen != AppScreen.CAMERA, onBack = backToCamera)
+    LumoraTheme(themeMode) {
+        Surface(Modifier.fillMaxSize()) {
+            when (screen) {
+                AppScreen.CAMERA -> {
+                    val openGallery = { screen = AppScreen.GALLERY }
+                    val openSettings = { screen = AppScreen.SETTINGS }
+                    if (cameraGranted) {
+                        savedScreens.SaveableStateProvider("viewfinder") {
+                            LumoraTheme(AppThemeMode.DARK) {
+                                CameraScreen(repository, presets, openGallery, openSettings) { device.lastLens = it }
+                            }
+                        }
+                    } else {
+                        CameraPermissionScreen(openSystemSettings, onEnableCamera, openGallery, openSettings)
+                    }
+                }
+                AppScreen.GALLERY -> GalleryScreen(repository, backToCamera)
+                AppScreen.SETTINGS -> SettingsScreen(
+                    repository, device.lastLens, updates,
+                    themeMode = themeMode, onThemeChange = onThemeChange, onBack = backToCamera
+                )
+            }
+            UpdateDialog(updates)
+        }
     }
 }
 
@@ -162,7 +243,7 @@ private fun CameraPermissionScreen(
     openSystemSettings: Boolean, onEnable: () -> Unit, onOpenGallery: () -> Unit, onOpenSettings: () -> Unit
 ) {
     Column(
-        Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(28.dp),
+        Modifier.fillMaxSize().safeAreaPadding().verticalScroll(rememberScrollState()).padding(28.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
