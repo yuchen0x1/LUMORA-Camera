@@ -44,6 +44,10 @@
 - 两个隔离环境各完成 **20/20 轮三项导航/线程测试（各 60 次执行）**，再完成 **API 29 74/74（27.175 秒）**、**API 35 74/74（49.756 秒）**、**平板 19/19（21.882 秒）**。原始日志前缀为 `D:/BuildTemp/lumora-215-compose-gate-`。构建成功（1 分钟，9 项执行、120 项 up-to-date），生产两个 APK 摘要不变；最终测试 APK 为 2,619,627 字节、SHA-256 `ced8458b6962fa5d91c7cb1e62adafa11c9f20e7ee664e8995305df4fc537fc4`。
 - 没有证据要求改动生产实现，也未将只在 API 35 命中等同于已证明平台缺陷。最终远程门禁仍须关联包含两项测试修正的精确提交；正式发布、签名及覆盖升级仍未执行。
 
+### 最终主线远程门禁
+
+最终候选提交为 `e60a4ebabebb699ab1304d59f0ee4a901d633b05`，已安全快进并实际推送 main，远程 SHA 精确一致。[Android CI 44845826727](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44845826727) 的构建/Lint、API 29、API 35 与 Android verification 全部 success；[Dependency security 44845826747](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44845826747) success（push 事件中的 Dependency review 按既有条件跳过，依赖图提交成功，不冒称 PR 审查已运行）。两项工作流 headSha 均精确匹配该候选。正式发布、签名公开资产及保留数据覆盖升级仍未执行；后续纯文档证据提交不改变上述候选的应用源码或测试。
+
 ## 2.1.4：更新失败恢复（2026-11-21）
 
 | 检查 | 最终结果 | 范围 |
