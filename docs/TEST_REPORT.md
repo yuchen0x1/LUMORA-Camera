@@ -10,9 +10,9 @@
 | 构建 | Debug、AndroidTest、未签名 Release 全部成功 | JDK 21，离线缓存，单 worker、1 GiB Gradle 堆；3 分 2 秒 |
 | Lint | Debug/Release 各 0 错误、32 警告 | Debug 警告 ID/消息集合与上版一致；未压制门禁 |
 | API 29 专项 | 25/25，0.629 秒 | 照片仓库 14 项及真实缓存文件事务 11 项 |
-| API 29 常规集 | 73/73，33.065 秒 | 包含原 58 项与新增 15 项 |
-| API 35 常规集 | 73/73，57.424 秒 | 同一 APK 和测试包 |
-| API 35 平板 | 18/18，22.683 秒 | 1600×2560 / 280 dpi；安全区、无相机权限导航、更新恢复；已核实恢复原 1080×2400 / 420 dpi |
+| 最终 API 29 常规集 | 74/74，27.175 秒 | 隔离 AVD；原 58 项、新增 15 项及 1 项主 Looper 回归 |
+| 最终 API 35 常规集 | 74/74，49.756 秒 | 同一生产 APK 与最终测试包，独立端口 |
+| 最终 API 35 平板 | 19/19，21.882 秒 | 1600×2560 / 280 dpi；安全区、三项权限/线程测试及更新恢复；恢复隔离设备原 320×640 / 160 dpi |
 | 启动与运行 | API 29 冷启动 Status: ok，versionName 2.1.5 / code 9 | 取景已进入可拍状态；[真实截图](screenshots/v2.1.5-camera-api29.png)；两台设备本轮 crash buffer 未见 app 崩溃，不是长稳证明 |
 | 依赖巡检 | 开放 Dependabot 告警 0 | 当前快照不等于全部库绝对安全 |
 | 远程源码 CI | 构建/Lint、API 29/35 与汇总门禁全部 success | [主线 run 44837860635](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44837860635)，headSha 为源码提交 592b7694abc265ad6e74c51587540f670fe207b3 |
@@ -34,6 +34,15 @@
 - 修正后 API 29 取消边界测试独立运行 **50/50**，API 35 **20/20**；随后完整常规集分别 **73/73（30.269 秒）**、**73/73（56.093 秒）**，API 35 平板 **18/18（28.309 秒）**。独立静态审查未发现同步、取消窗口或清理遗漏；屏幕设置随后恢复。
 - 本地构建命令再次成功（57 秒，8 项执行、121 项 up-to-date）；JVM 23 项及双 Lint 0 错误/32 警告为未变化任务的既有报告，不冒充再次实际执行。Debug 与未签名 Release 的 SHA-256 均与初次验收逐字节一致；新测试 APK 为 2,501,719 字节、SHA-256 `41983715b7d3c7819d925a13d250ba0c5fcbc55cdb5731625186c616941fbcbe`。
 - 原始输出为本机 `D:/BuildTemp/lumora-215-test-gate-*`。最终候选须包含本次测试同步修正，并独立通过其精确提交的远程 CI，不能用原始源码提交的成功替代。正式发布仍未执行。
+
+### 后续 API 35 CI 的 Compose 测试线程约束
+
+- 测试同步修正提交 `2cda675` 的 [CI 44841433689](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44841433689) 中，构建/Lint、API 29、取消边界测试及依赖检查通过；API 35 常规 73 项中 1 项失败。失败为既有无相机权限图库导航：`Choreographer.getInstance()` 报当前线程没有 Looper，调用栈含测试帧时钟、测试 interceptor 及仓库流的 IO worker。没有将该运行写成通过，也未直接重跑成功步骤。
+- 核对 [Compose UI Test 1.7.6 官方源码包](https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-test-android/1.7.6/ui-test-android-1.7.6-sources.jar) 的 `ComposeUiTest.android.kt:233–236`、`MainTestClockImpl.android.kt:23–30` 及 `AbstractMainTestClock.jvm.kt:64–73`：默认 Unconfined 测试调度器可在唤醒线程继续；可传入的 Standard 测试调度器由 Compose 时钟在 UI 线程推进。仅为 `CameraPermissionNavigationTest` 显式传入 `effectContext = StandardTestDispatcher()`，不改生产 flowOn、依赖或线程模型，不关闭 LazyGrid 预取，不提高原超时或弱化导航断言。
+- 新增真实仓库流回归：初始及更新回调必须在主 Looper；写入动作明确在没有 Looper 的 IO 线程。原两个导航测试方法体与断言不变；该类由 2 项增至 3 项，常规总数由 73 增至 74，平板子集由 18 增至 19。
+- 首次共享 API 29 设备的第 10 轮返回“Process crashed”，未获得对应应用崩溃栈；同期日志出现本轮未构建的 AF/网格及另一名称的线程回归，存在测试包/设备并发使用证据。这轮不计作通过，也不归因为补丁崩溃。停止使用共享设备后，仅用已安装镜像创建独占 AVD `lumora215_compose29_6f39` / `lumora215_compose35_6f39`，端口 5560 / 5562；不再停止、安装或清理其他会话使用的设备。
+- 两个隔离环境各完成 **20/20 轮三项导航/线程测试（各 60 次执行）**，再完成 **API 29 74/74（27.175 秒）**、**API 35 74/74（49.756 秒）**、**平板 19/19（21.882 秒）**。原始日志前缀为 `D:/BuildTemp/lumora-215-compose-gate-`。构建成功（1 分钟，9 项执行、120 项 up-to-date），生产两个 APK 摘要不变；最终测试 APK 为 2,619,627 字节、SHA-256 `ced8458b6962fa5d91c7cb1e62adafa11c9f20e7ee664e8995305df4fc537fc4`。
+- 没有证据要求改动生产实现，也未将只在 API 35 命中等同于已证明平台缺陷。最终远程门禁仍须关联包含两项测试修正的精确提交；正式发布、签名及覆盖升级仍未执行。
 
 ## 2.1.4：更新失败恢复（2026-11-21）
 
