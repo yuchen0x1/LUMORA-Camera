@@ -5,17 +5,21 @@ import android.content.ContextWrapper
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.lifecycle.ViewModelProvider
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -25,6 +29,7 @@ import com.lumora.camera.data.PhotoRecord
 import com.lumora.camera.data.PhotoRepository
 import com.lumora.camera.ui.LumoraTheme
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
@@ -39,19 +44,48 @@ import java.util.UUID
 @OptIn(ExperimentalTestApi::class)
 @RunWith(AndroidJUnit4::class)
 class GalleryRecoveryAndExitTest {
-    // Match CameraPermissionNavigationTest: IO must not resume the Compose recomposer on IO.
-    @get:Rule val compose = createComposeRule(effectContext = StandardTestDispatcher())
+    private val mainScheduler = TestCoroutineScheduler()
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>(
+        effectContext = StandardTestDispatcher(mainScheduler)
+    )
+    private val clockHandler = Handler(Looper.getMainLooper())
+    private var clockRunning = false
+    private val clockFrame = object : Runnable {
+        override fun run() {
+            if (!clockRunning) return
+            // Compose 1.7.6 scroll actions can queue work without advancing the test clock.
+            if (compose.mainClock.autoAdvance) compose.mainClock.advanceTimeByFrame()
+            if (clockRunning) clockHandler.postDelayed(this, 16L)
+        }
+    }
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private val namespace = "gallery-recovery-exit-test-${UUID.randomUUID()}"
     private val prefs = context.getSharedPreferences(namespace, Context.MODE_PRIVATE)
     private val repository = PhotoRepository(context, namespace)
     private val media = File(context.cacheDir, namespace).apply { check(mkdirs()) }
-    private val session = GallerySession()
+    private lateinit var session: GallerySession
     private var backCalls = 0
 
-    @Before fun startRecomposer() { compose.mainClock.advanceTimeByFrame() }
+    @Before fun startRecomposer() {
+        compose.mainClock.advanceTimeByFrame()
+        compose.runOnUiThread {
+            session = ViewModelProvider(compose.activity)[GallerySession::class.java]
+            clockRunning = true
+            clockHandler.post(clockFrame)
+        }
+    }
 
     @After fun cleanup() {
+        compose.runOnUiThread {
+            clockRunning = false
+            clockHandler.removeCallbacks(clockFrame)
+        }
+        try {
+            // Closing the owner cancels session work before its fixture files are removed.
+            compose.activityRule.scenario.close()
+        } finally {
+            compose.runOnUiThread { mainScheduler.runCurrent() }
+        }
         // Only this isolated namespace can contain the renders made by these tests.
         repository.getRecords().map { Uri.parse(it.enhancedUri) }.distinct()
             .filter { it.scheme == "content" && it.authority == "media" }.forEach {
