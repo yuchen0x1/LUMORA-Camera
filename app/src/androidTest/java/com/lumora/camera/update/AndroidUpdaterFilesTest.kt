@@ -23,7 +23,6 @@ import java.io.File
 import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.TimeUnit
 import kotlin.coroutines.CoroutineContext
 
 /** Exercises the production file transaction, not network or APK certificate verification. */
@@ -221,23 +220,34 @@ class AndroidUpdaterFilesTest {
             val files = store()
             val previous = publish(files, firstBytes)
             val pending = LinkedBlockingQueue<Runnable>()
+            val returnQueued = CompletableDeferred<Unit>()
+            val finishVerification = CompletableDeferred<Unit>()
             val gate = Any()
             var paused = true
             val caller = object : CoroutineDispatcher() {
                 override fun dispatch(context: CoroutineContext, block: Runnable) {
                     synchronized(gate) {
-                        if (paused) pending.add(block) else Dispatchers.Default.dispatch(context, block)
+                        if (paused) {
+                            pending.add(block)
+                            returnQueued.complete(Unit)
+                        } else Dispatchers.Default.dispatch(context, block)
                     }
                 }
             }
             val downloading = launch(caller, start = CoroutineStart.UNDISPATCHED) {
-                files.writeVerified(secondBytes.size.toLong()) { it.writeBytes(secondBytes) }
+                files.writeVerified(secondBytes.size.toLong()) {
+                    it.writeBytes(secondBytes)
+                    finishVerification.await()
+                }
             }
             var completion: Runnable? = null
             lateinit var promoted: File
             try {
+                // Force suspension before IO can finish; a fast return need not dispatch.
+                finishVerification.complete(Unit)
+                returnQueued.await()
                 // IO has promoted the file, but the caller cannot observe success yet.
-                completion = checkNotNull(pending.poll(5, TimeUnit.SECONDS))
+                completion = checkNotNull(pending.poll())
                 promoted = files.verifiedFile()
                 assertNotEquals(previous, promoted)
                 assertTrue(promoted.isFile)
@@ -251,6 +261,7 @@ class AndroidUpdaterFilesTest {
                 completion?.run()
             }
             downloading.join()
+            assertTrue(downloading.isCancelled)
             assertFalse(promoted.exists())
             assertEquals(previous, files.verifiedFile())
             assertArrayEquals(firstBytes, previous.readBytes())
