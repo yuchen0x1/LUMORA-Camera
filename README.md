@@ -2,17 +2,13 @@
 
 LUMORA 是一款面向 Android 10 及以上系统的本地摄影应用。可以从取景器拍摄 JPEG，在同一张原图上尝试胶片风格与编辑参数，并在作品库中比较不同版本。
 
-当前公开稳定版为 **v2.1.6（versionCode 10）**，包含此前未单独发布的 2.1.5 数据保全与更新缓存隔离修复。相机权限仅用于取景和拍摄；不授权也能使用作品库和设置。正式下载以 [GitHub Release v2.1.6](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.6) 中通过签名发布流水线的资产为准。`v2.1.0` 是未发布候选标签，历史 [v2.0.0 测试版](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.0.0) 使用调试证书，均不能直接覆盖为不同签名的正式包；不要为升级自动卸载旧应用。版本变化见[更新记录](CHANGELOG.md)，实际发布状态见[发布历史](RELEASE_HISTORY.md)。
+当前公开稳定版为 **v2.1.7（versionCode 11，Android 10 / API 29 起，targetSdk 35）**。相机权限仅用于取景和拍摄；不授权也能使用作品库和设置。请从 [GitHub Release v2.1.7](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.7) 下载正式签名 APK。`v2.1.0` 是未发布候选标签；历史 [v2.0.0 测试版](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.0.0) 使用调试证书，不能直接覆盖为不同签名的正式包。不要为升级卸载旧应用。版本变化见[更新记录](CHANGELOG.md)，发布源码和资产见[发布历史](RELEASE_HISTORY.md)。
 
-## 2.1.7 / code 11 候选进度（未发布，2026-11-21）
+## 2.1.7 新功能与验证范围
 
-公开稳定版仍为 **2.1.6 / code 10**；2.1.7 / code 11 尚未推送、打正式标签或发布，源码提交以 git HEAD 为准。
-
-- 候选功能：RAW、主题/安全区、PRO 可保存状态、仅预览 OOM 降级；有界进程所有的拍摄/渲染队列与持久日志（检查写入、移除墓碑、重建协调）；显式且仅新增的索引恢复预览、隐私提示与错误处理。
-- 最终 EOF 空行清理后重建成功，Debug/Release、严格无 suppression Lint 与 JVM **53/53 实际重跑**通过；精确冻结 APK 也已完成本地双 API 默认矩阵（150/151）、双 API 真实安装器取消、360dp/fontScale 200%、100 张耐久保留 200 个 JPEG及平板 8 项验收。新一轮 8 张窄屏截图已复核，生产逻辑未改；人工 fixed-width floating LIGHT 白图标 caveat 及 UpdateDialog、实体设备/多窗口边界保留。
-- 工程：DocumentFile 1.1.0、可信来源的新 Gradle 9.1.0 Wrapper、STRICT 锁/校验与 919/919 官方摘要审计；两份偏好 XML 备份白名单使日志隐式排除。当前 Debug/测试/未签名 Release 精确身份、全部新包门禁、静态 APK 暴露面范围与边界见[验收记录](docs/TEST_REPORT.md)。未签名 APK 明确不可分发；扫描器报告的未签名门禁是发布阻断，不是需以本地签名规避的问题。
-
-以下公开版用法、截图和历史报告描述 v2.1.6，不作为候选验收。远程 CI、实际 CodeQL（java-kotlin / python / actions）、受保护签名/公开资产及 2.1.6→2.1.7 正式覆盖升级仍未完成；2.1.7 仍未发布。实体硬件、厂商 AF/扩展、12/48 MP 内存、持久 URI 授权回收、提供方阻塞及实体安装器/多窗口仍未验收，不宣称积压全部关闭或跨版本性能/画质改善。
+- 新增按镜头能力提供的 RAW / DNG 拍摄、主题与安全区改进、可保存的 PRO 状态、仅预览 OOM 降级，以及有界拍摄/渲染队列、持久拍摄日志和仅新增的索引恢复预览。
+- 源码 main push CI、标签 CI 和实际三语言 CodeQL 均已通过。公开资产已独立验签；双 API 默认矩阵、真实安装器取消、360dp/fontScale 200%、100 张耐久与平板结果见[验收报告](docs/TEST_REPORT.md)。独立 API 35 模拟器中，同证书 v2.1.6 → v2.1.7 覆盖安装保留了测试作品、收藏、音量键快门偏好及 4 个样本 JPEG；不涵盖主题迁移。
+- 人工固定宽度浮动窗口的 LIGHT 白图标仍是已知限制。实体 RAW/厂商 AF/扩展、12/48 MP 峰值内存、URI 授权回收、提供方阻塞、云备份迁移、UpdateDialog 接线及实体安装器/多窗口仍待独立验证；不主张跨版本提速或画质提升。下方历史截图不作 v2.1.7 验收证据。
 
 ![API 35 模拟器上的取景界面](docs/screenshots/v2-camera.png)
 
@@ -22,13 +18,13 @@ LUMORA 是一款面向 Android 10 及以上系统的本地摄影应用。可以�
 
 1. 若要拍照，先点按「开启相机」并授权。点按取景画面进行对焦与测光，使用屏幕快门或启用的音量键拍照。只想查看、导入或编辑照片时，可不授权，直接点按「打开作品库」。
 2. 在相机顶部切换模式，打开专业控制可查看当前镜头能调的 ISO、快门、白平衡、手动对焦、变焦及曝光补偿。ISO 与曝光时间是请求值，保存后在作品的诊断信息中核对实际 EXIF。
-3. 在拍摄工具中选择 4:3 或 16:9、3 秒或 10 秒倒计时、单张或 3 / 5 张连续拍摄。街拍优先缩短拍摄延迟。厂商 HDR、夜景、人像扩展随镜头和设备而定。
+3. 在拍摄工具中选择 4:3 或 16:9、3 秒或 10 秒倒计时、单张或 3 / 5 张连续拍摄。街拍优先缩短拍摄延迟。厂商 HDR、夜景、人像扩展随镜头和设备而定。支持 RAW 的镜头可选择「RAW / DNG」模式，单独保存 DNG 原图，不生成胶片成片。
 4. 在设置或拍摄工具中选择关闭、三分网格或黄金分割，往返页面和重启后保留选择。打开胶片风格面板选择预设、强度和收藏。拍下第一张照片或从作品库指定样片后，可在同一张照片上比较预设。取景辅助包含网格、水平仪、直方图、明暗警告和峰值提示。
 5. 原图与成片分别存入系统媒体库的 `Pictures/LUMORA`。在作品中对比原图、导入照片、调整参数并保存新版本。可撤销编辑步骤，已经保存的上一版本仍可打开。从作品库移除记录会保留媒体文件。
 
 ### 作品索引保护
 
-读取时遇到不可读的作品条目不会修改原始索引。下次实际新增、收藏或移除作品而需要重写时，应用会先在同一份私有偏好更新中保留完整原文恢复快照，包括合法 JSON 内被跳过的未知条目；已有恢复快照不覆盖，媒体文件不删除。这是恢复线索保全，不是自动修复，当前没有应用内恢复入口。
+读取时遇到不可读的作品条目不会修改原始索引。下次实际新增、收藏或移除作品而需要重写时，应用会保留完整原文恢复快照，包括合法 JSON 内被跳过的未知条目；已有快照不覆盖，媒体文件不删除。作品库发现恢复线索时可点「预览恢复」，由用户确认，仅补入可恢复且尚未存在的记录，不覆盖现有作品，不保证自动或完整修复。
 
 ## 应用更新
 
@@ -57,7 +53,7 @@ adb devices
 adb -s DEVICE_SERIAL install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-将 `DEVICE_SERIAL` 替换为明确指定的专用测试设备序列号，不对所有已连接设备批量安装。候选 `scripts/build-local.ps1` 目前只通过 PowerShell `Parser::ParseFile` 语法检查，未执行该脚本的完整 Wrapper 流程；不以语法检查替代构建验收。
+将 `DEVICE_SERIAL` 替换为明确指定的专用测试设备序列号，不对所有已连接设备批量安装。`scripts/build-local.ps1` 在本轮只通过 PowerShell `Parser::ParseFile` 语法检查，未执行该脚本的完整 Wrapper 流程；不以语法检查替代构建验收。
 
 Debug 安装包位于 `app/build/outputs/apk/debug/app-debug.apk`；本地 Release 输出为 `app/build/outputs/apk/release/app-release-unsigned.apk`，需签名后才能安装。正式发布流程通过受保护的 `android-release` 环境签名，保留证书、版本和摘要校验及签名 APK 的模拟器安装启动检查；本地工程不包含发布密钥。调试测试版不能覆盖安装不同签名的正式版；保留原安装和照片，勿为升级直接卸载。分发规则见[平台与分发](docs/PLATFORMS.md)。首次使用 Gradle Wrapper 会下载固定版本的 Gradle；离线构建需要预先缓存全部依赖。
 
@@ -65,4 +61,4 @@ Debug 安装包位于 `app/build/outputs/apk/debug/app-debug.apk`；本地 Relea
 
 [2.1.6 历史交付报告](docs/EVOLUTION-2.1.6.md) · [新版构图设置真实截图](docs/screenshots/v2.1.6-grid-settings-api29.png) · [验收与性能报告](docs/TEST_REPORT.md) · [历史仪器测试明细](docs/verification/device-results.json) · [实现与数据流](docs/ARCHITECTURE.md) · [版本记录](CHANGELOG.md)
 
-成像诊断可在作品中查看，也可通过 `adb logcat -s LumoraCapture` 读取。公开 v2.1.6 导出格式为 JPEG。模拟器验证与实体设备验收范围详见报告。
+成像诊断可在作品中查看，也可通过 `adb logcat -s LumoraCapture` 读取。作品编辑导出为 JPEG；RAW / DNG 模式独立保存原图。模拟器验证与实体设备验收范围详见报告。

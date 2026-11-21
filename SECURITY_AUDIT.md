@@ -1,16 +1,41 @@
 # 安全审查
 
-## 2.1.7 / code 11 候选加固（2026-11-21，未发布；当前本地门禁通过）
+## 2.1.7 / code 11 正式发布审查（2026-11-21）
 
-公开稳定版仍为 2.1.6 / code 10；以下记录本轮本地实现与有界静态证据，不是最终安全验收，下方历史审查与 2.1.6 的备份策略证据保留。
+### 1. 总览
 
-- DocumentFile 1.1.0、可信来源的新 Gradle 9.1.0 Wrapper、STRICT 锁/校验已接入；官方 SHA-256 审计 **919/919、0 mismatches/bypasses**，校验元数据 `SHA800c2a465d9b37c1495a35347c9e92662d85113995b0939c8f54702d740c4b5e`。该占位符保留原始 Windows-CRLF 审计快照；提交 Git-LF 归一化摘要为 `cd23b0bdc4638ff9235e931085591f7d9a9a350581448f30bd0d56dd44209352`，仅换行差异且 919 条 XML 条目未变。来源一致不等于漏洞扫描或 CodeQL 通过。
-- `allowBackup=true` 为有意的受限策略：云备份与设备迁移仅允许 `lumora_preferences.xml` / `lumora_updates.xml`，日志因未入白名单而隐式排除；宽泛 FullBackupContent suppression 已移除，无 suppression 严格 Lint 通过。真实备份迁移未验收，偏好中的索引/恢复引用仍须按隐私含义评估。
-- EOF 清理后重建的构建/Lint 与 JVM 53/53 实际重新执行通过。准确新 Debug/test APK 通过 API 29/35 默认集 **150/151**、真实安装器取消、360dp/fontScale 200%、100 张耐久/200 JPEG 与平板 8/8；全部摘要及报告见 [TEST_REPORT](docs/TEST_REPORT.md)。测试不覆盖网络/archive/递增版本门禁、UpdateDialog、实体设备或多窗口。
-- 当前未签名 Release APK `232983df7f9ef902a1565e870b59c50ad2610c55fa051b9c10e32495803f9c8f`（50,442,871 B）单独重扫暴露面 **86/B**；`--fail-on high` 预期因唯一高项 APK-SIG（无签名，本地中间包）返回 1。该 APK 明确不可分发。身份、non-debuggable、导出组件权限、窄 FileProvider 路径、备份资源及归档候选均已在 `D:/BuildTemp/lumora217-staged-exposure-_5dc_veo/verification-report.txt` 有界核对；无已确认的发布 APK 凭证命中，但静态 pattern scan 不能证明无秘密。扫描分数不是密码学验签、无漏洞证明或正式分发许可；后续受保护签名包为不同摘要，须另行验签和审查。
-- 2.1.7 / code 11 未推送/打正式标签/发布，提交以 git HEAD 为准；远程 CI、实际 CodeQL/告警结果、受保护签名/公开资产与正式升级未完成。URI 授权回收、提供方阻塞、实体硬件、厂商 AF/扩展、12/48 MP 内存与实体安装器/多窗口仍开放。
+公开稳定版为 **2.1.7 / code 11**，不可变标签 `v2.1.7` 指向 `7778eb8a5b43fe7f940ae2ec446bed6e0cc50c98`。正式发布运行 `44902474570` 的 11 个任务全部成功；公开时间为 **2026-11-21 12:27:00 UTC**。独立下载的正式 APK 为 **50,492,714 B**，SHA-256 为 `f34422e09712ec2b42e5b75e2b4f8fa764294a828c1d7ed6983c998f6befebbf`。公开资产、升级与测试范围见 [RELEASE_HISTORY](RELEASE_HISTORY.md) 和 [TEST_REPORT](docs/TEST_REPORT.md)。下方历史失败和 2.1.6 证据保留，不挪作本版结果。
 
-完整审计来源、当前未签名 APK 摘要、失败与历史快照边界见 [TEST_REPORT](docs/TEST_REPORT.md)，不以局部静态扫描或本地通过声称积压全关或绝对安全。
+针对这一正式包的 `android` 静态暴露面扫描为 **98/B，1 低、3 信息、0 高/严重**，`--fail-on high` 实际返回 **0**。这是扫描器的相对启发式评分，不是安全认证、秘密穷尽扫描或无漏洞证明；未检查的画像也不表示安全。报告在 `D:/BuildTemp/lumora217-public-verified-qq92g04r/evidence/exposure-scan.json`。
+
+### 2. 发现清单
+
+| 编号 | 严重度 | 证据与人工判读 | 对应分析能力 |
+| --- | --- | --- | --- |
+| APK-ALLOWBACKUP | 低 | Manifest 的 `allowBackup=true`；受限白名单是有意策略，不等于已证明任意 ADB 数据导出 | 备份配置/数据提取审查 |
+| APK-SIGOK | 信息 | 扫描器识别签名块；实际方案和签名有效性以 `apksigner verify` 为准 | APK 签名块检查 |
+| APK-MANIFEST | 信息 | 已解析 `com.lumora.camera` Manifest，37 个元素 | Manifest/组件审查 |
+| APK-DEX | 信息 | 3 个 DEX 文件，客户端实现可反编译分析 | DEX 静态分析；不是已发现授权绕过 |
+
+### 3. 逐项证据与修复
+
+- **签名、来源与更新通道：** 独立验证的 `apksigner` 返回 0、`Verifies`、单一正式签名者，证书 SHA-256 为 `c5bec00b0721f580823a9bc9acda5285fa1c5e108ed3798d0ee3bc626c157985`，与既有正式版一致；v3 验证为 true。扫描器的签名块存在性提示写作 v2/v3，但本次密码学验证输出为 v2=false、v3=true，不能混淆两者；既有 minSdk 29 的 v3 策略未降低。`aapt` 身份、minSdk 29 / targetSdk 35、non-debuggable 及 `zipalign -c -P 16 4` 均通过。三个公开资产与 API digest、元数据、SHA256SUMS 精确一致，证据在同目录 `verification.json`。最初证书正则因 Windows CRLF 解析失败，随后从原下载和原成功验签输出以 `splitlines()` 精确核对，未放宽证书要求、重下包或重发版本；原失败保留。
+- **备份（APK-ALLOWBACKUP）：** `app/src/main/res/xml/backup_rules.xml` 和 `data_extraction_rules.xml` 的云备份/设备迁移仅允许 `lumora_preferences.xml`、`lumora_updates.xml`。捕获日志未入白名单而隐式排除；宽泛 FullBackupContent suppression 已移除。偏好含作品索引与恢复引用，仍有隐私含义；真实云备份迁移未验收，规则不迁移 MediaStore 照片，也不重建 URI grants。不为消除扫描提示而关闭已约定的受限备份功能。
+- **DEX/Manifest：** 开源客户端不把胶片算法当作秘密；DEX 可分析本身不是缺陷，不为抬高分数引入加壳、反调试或声称字符串加密能够保密。既有更新 FileProvider 不导出且只覆盖更新缓存；`AndroidUpdater.kt:94–111` 核对字节大小、SHA-256、包名、递增版本码、minSdk 和候选/已安装证书；`UpdateProtocol.kt` 限定仓库与 HTTPS 下载来源。这是有界源码审查，不等于已完成全部网络/归档/授权场景测试。
+- **依赖与远端安全门禁：** DocumentFile 1.1.0、可信 Gradle 9.1.0 Wrapper、STRICT 锁/校验已接入。官方 SHA-256 来源审计 **919/919、0 mismatches/bypasses**，校验元数据 `SHA800c2a465d9b37c1495a35347c9e92662d85113995b0939c8f54702d740c4b5e` 保留原始 Windows-CRLF 快照；Git-LF 摘要 `cd23b0bdc4638ff9235e931085591f7d9a9a350581448f30bd0d56dd44209352`，仅换行差异，919 条 XML 条目未变。标签运行实际 CodeQL 2.27.5 分析为 java-kotlin `2220686804`（76 rules）、python `2220682858`（43）、actions `2220682811`（17），各 0 results、空 errors/warnings，匹配 `refs/tags/v2.1.7` 与 `.github/workflows/release.yml:analyze`。2026-11-21 13:31:28–32 UTC 完整分页快照中仓库/main/tag 开放 code-scanning 和 Dependabot 各 0；这是时间点证据，不是未来无漏洞保证。独立审查根为 `D:/BuildTemp/lumora217-tag44902474570-evidence-ea6c694a29`。
+- **回归与历史失败：** 标签阶段 JVM 53 通过，双变体 Lint 各 51 Warning、0 Error/Fatal；7 份 instrumentation 报告共 313 个成功方法终态，默认集 API 29/35 为 150/151，另含真实安装器取消、360dp/fontScale 200%、100 张/200 JPEG 耐久和平板 8 项。报告只证明发出的测试结果，不证明内部条件分支没有提前返回，也不覆盖实体硬件或全部 UpdateDialog/网络场景。旧未签名中间包 `232983df7f9ef902a1565e870b59c50ad2610c55fa051b9c10e32495803f9c8f`（50,442,871 B）扫描 **86/B**、唯一高项 APK-SIG、门禁返回 1 的记录仍保留在 `D:/BuildTemp/lumora217-staged-exposure-_5dc_veo/verification-report.txt`；该包始终不可分发，不能把其分数或失败套用到正式包。
+
+### 4. 客户端无法解决的问题
+
+- 混淆、native 下沉或加密字符串不能让随客户端分发的长期秘密真正保密；不得把最终授权/计费判断仅放在客户端。此次静态扫描不是服务端接口或付费授权审计，也不能证明所有字节均无秘密。
+- 正式签名私钥和发布权限仍须由受保护 CI、秘密存储与审计流程保护，不能随 APK/源码下发；客户端证书核对无法替代私钥保护。
+- 本地保留数据覆盖升级不等于跨设备备份迁移，也不证明提供方权限永久有效。实体硬件、厂商 AF/RAW/扩展、12/48 MP 峰值内存、URI 授权回收、阻塞提供方、实体安装器及多窗口等仍有开放验证边界。
+
+### 5. 修复顺序与保留项
+
+1. P0：若发现真实凭证泄漏，先吊销/轮换并移出客户端；本扫描未确认此类命中，不能据此保证不存在。
+2. P1：保留来源/签名/版本/摘要和受保护发布门禁；本版源码 CI、实际安全分析、签名包启动与公开资产独立验证均已完成，不复用或移动旧标签。
+3. P2：维持受限备份白名单并评估索引隐私；按上述开放边界补做实体/提供方/真实迁移测试，不以模拟器通过、相对扫描分数或本版发布声称积压全关。
 
 ## 历史安全审查（保留原证据）
 

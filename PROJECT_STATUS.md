@@ -1,21 +1,19 @@
 # 项目状态
 
-最后更新：2026-11-21（公开稳定版 2.1.6 / code 10；2.1.7 / code 11 候选进行中）。
+最后更新：2026-11-21（公开稳定版 v2.1.7 / code 11）。
 
-## 当前候选：2.1.7 / code 11（未发布；本地精确产物门禁通过）
+## 当前公开稳定版：v2.1.7 / code 11 / minSdk 29 / targetSdk 35
 
 - 范围：RAW、主题/安全区、PRO 可保存状态、仅预览 OOM 降级、有界进程所有的拍摄/渲染队列、检查写入/移除墓碑/重建协调的持久日志，以及显式且仅新增的索引恢复预览/隐私提示/错误处理。
-- 当前精确重建：EOF 空行清理后构建/Lint 成功，JVM **53/53 实际重新执行**、0 失败/错误/跳过；已冻结并逐字节绑定产物身份。本轮精确 Debug + 测试 APK 已通过 API 29/35 默认集 **150/151**、双 API 真实安装器取消、API 35 真实 360dp/fontScale 200%、100 张/200 个 JPEG 耐久及平板 **8/8**；窄屏新截图已逐张查看。新指标及所有报告见[验收记录](docs/TEST_REPORT.md)。
-- 静态 APK 复核：Release 身份为 2.1.7/code 11/min 29/target 35/compile 36、非 debuggable；FileProvider 限于 `cache/verified-update/`，备份仅列两份偏好 XML，未发现未授权导出组件或已确认的发布包凭证命中。该复核不是完整安全保证。当前 Release **未签名且不可分发**，扫描器高危项是预期签名阻断；正式签名必须来自受保护流水线，之后需针对新签名摘要单独复核。
-- 视觉与边界：当前精确产物的八张窄屏截图已验证；人工 fixed-width floating LIGHT 白图标 caveat 仍保留。fixture 不覆盖 UpdateDialog、网络/递增版本门禁、实体设备或多窗口；不作跨版本性能、画质或实体峰值内存声明。
+- 发布：源码 `7778eb8a5b43fe7f940ae2ec446bed6e0cc50c98` 已进入 `main`，轻量标签 `v2.1.7` 固定指向该提交。源码 main push CI 44900113421 与标签发布 44902474570 均成功，后者覆盖实际 CodeQL、受保护签名、签名 APK 安装启动及公开核验。发布 ID、三项独立下载资产及验签见[发布历史](RELEASE_HISTORY.md)；旧本地未签名 APK 不可分发，不套用其扫描结果。
+- 标签验收：JVM 53 通过，两种 Lint 各 51 Warning、0 Error/Fatal；API 29/35 默认集 150/151、双 API 真实安装器取消、360dp/fontScale 200%、100 张/200 JPEG 耐久及平板 8 项通过。标签和发布前本地结果按产物分开，失败、日志及范围见[验收记录](docs/TEST_REPORT.md)。
 - 工程：DocumentFile 1.1.0、可信来源的新 Gradle 9.1.0 Wrapper、STRICT 锁/校验；官方摘要审计 **919/919、0 mismatches/bypasses**，元数据 `SHA800c2a465d9b37c1495a35347c9e92662d85113995b0939c8f54702d740c4b5e`。备份仅白名单允许 `lumora_preferences.xml` / `lumora_updates.xml`，日志隐式排除；无宽泛 suppression 的 Lint 已通过。
-- 公开稳定版仍为 **2.1.6 / code 10**；候选尚未推送/打正式标签/发布，源码提交以 git HEAD 为准。远程 CI、实际 CodeQL/告警结果、受保护签名/公开资产及 2.1.6→2.1.7 正式覆盖升级仍未完成；实体硬件、厂商 AF、12/48 MP 内存、持久 URI 授权回收、提供方阻塞、UpdateDialog/实体安装器/多窗口仍待验证，不宣称积压全部关闭。原 E 盘状态与 binary diff 指纹均匹配。
+- 保留数据覆盖升级：独立 API 35 上公开同证书 v2.1.6 → v2.1.7 的 `adb install -r` 限定范围通过，保留 2 张作品、1 张收藏、关闭的音量键快门及 4 个样本 JPEG；复启复核，主题不在范围。详见[验收记录](docs/TEST_REPORT.md#正式包保留数据覆盖升级)。
+- 边界：保留人工 fixed-width floating LIGHT 白图标 caveat。安装器 fixture 不覆盖网络/递增版本门禁、UpdateDialog、实体安装器或多窗口；实体 RAW/厂商 AF/扩展、12/48 MP 峰值内存、持久 URI 授权回收、提供方阻塞及云备份迁移仍开放。不主张跨版本性能或画质改善。原 E 盘状态与 binary diff 指纹均匹配。
 
-最新产物身份、全部当前本地门禁及失败/历史快照边界见[验收记录](docs/TEST_REPORT.md)；当前本地通过不替代远程、签名、硬件或正式发布验收。
+## 2.1.6 正式发布状态（历史证据）
 
-## 2.1.6 公开稳定版状态（历史证据）
-
-- **当前公开稳定版：v2.1.6 / versionCode 10 / minSdk 29。** 发布目标提交为 `0bfcead473a850f7319fbf98193ed8e8cae96fd3`，包含未单独发布的 2.1.5 / code 9 修复；原工作区 `maintenance/release-2.1.1` 的未提交相机、RAW、主题、图库等改动未触碰、未混入。
+- **当时公开稳定版：v2.1.6 / versionCode 10 / minSdk 29。** 发布目标提交为 `0bfcead473a850f7319fbf98193ed8e8cae96fd3`，包含未单独发布的 2.1.5 / code 9 修复；原工作区 `maintenance/release-2.1.1` 的未提交相机、RAW、主题、图库等改动未触碰、未混入。
 - **正式发布与公开资产已独立核验。** Release workflow 44852568794 的全部 job 成功；公开 APK、更新元数据和摘要清单均下载校验，v3 签名、包名、版本、SDK、非 debuggable 与 zipalign 均通过。详见 [正式发布历史](RELEASE_HISTORY.md)。
 - **覆盖升级已完成。** 独立 API 35 AVD 从公开 v2.1.4 以 `adb install -r` 覆盖到 v2.1.6；作品库仍为“全部 2、收藏 1”，原图/成片均可打开，关闭的音量键快门偏好保留，4 个 JPEG 媒体文件 SHA-256 未变化。
 

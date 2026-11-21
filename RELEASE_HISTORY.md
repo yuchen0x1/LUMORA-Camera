@@ -2,12 +2,21 @@
 
 以 GitHub Release 和签名资产的真实状态为准，不将标签存在、候选元数据、调试 APK 或未完成流水线称为正式发布。
 
-## 当前进度：2.1.7 / code 11（未发布候选，2026-11-21）
+## v2.1.7 发布证据（当前公开稳定版）
 
-- **公开稳定版仍为 v2.1.6 / code 10。** 2.1.7 / code 11 未推送、打正式标签或发布，源码提交以 git HEAD 为准；CHANGELOG 候选节不是正式分发证据。公开 main `717a5fa` 的既有复核不表示候选已进入主线。
-- EOF 空行清理后重建的构建/Lint 与 JVM 53/53 实际重跑通过；生产逻辑未改，但新 Debug/未签名 APK 摘要变化，故按新的冻结产物完整重跑本地门禁。当前精确 Debug/test APK 已通过 API 29/35 默认矩阵 150/151、双 API 真实安装器取消、360dp/fontScale 200%、100 张耐久/200 JPEG 与平板 8/8。
-- 人工 fixed-width floating LIGHT 白图标有独立 caveat；安装器 fixture 不覆盖 UpdateDialog、网络/递增版本门禁、实体设备或多窗口。当前未签名 APK 的静态扫描唯一高危项为预期的 unsigned `APK-SIG`，明确不可作为正式分发资产；有界清单与边界见 [TEST_REPORT](docs/TEST_REPORT.md)。本地通过不替代远程 CI、实际 CodeQL（java-kotlin / python / actions）、受保护签名/公开资产或 2.1.6→2.1.7 正式覆盖升级。
-- URI 授权回收、提供方阻塞、实体硬件、厂商 AF 与 12/48 MP 内存等边界不因此关闭，也不复用下方历史发布证据替候选背书。
+- **v2.1.7 / versionCode 11 / minSdk 29 / targetSdk 35** 已公开：[GitHub Release v2.1.7](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.7)，ID `453675180`，`draft=false`、`prerelease=false`，发布于 `2026-11-21T12:27:00Z`。源码先进入 `main`，新建的轻量标签 `v2.1.7` 直接指向 `7778eb8a5b43fe7f940ae2ec446bed6e0cc50c98`；未移动、未复用标签。发布后文档不改变标签或发布源码。
+- [源码 main push CI 44900113421](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44900113421) 成功，与 [标签发布 run 44902474570](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44902474570) 分开。标签 run 第 1 次尝试的 11 个 job 全部成功，含复用 Android CI、实际三语言 CodeQL、受保护签名、签名 APK 安装启动及草稿/公开资产校验。标签 CI 报告、CodeQL、告警和仪器范围详见[验收报告](docs/TEST_REPORT.md#标签发布流水线与独立报告复核)。
+- 独立公开下载核对恰好三项资产；大小和 SHA-256 均与 GitHub API 一致，更新元数据与 `SHA256SUMS.txt` 的对应条目也吻合。证据：`D:/BuildTemp/lumora217-public-verified-qq92g04r/evidence/verification.json`。
+
+| 公开资产 | 字节数 | SHA-256 |
+| --- | ---: | --- |
+| `LUMORA-Camera-2.1.7-Android-universal.apk` | 50,492,714 | `f34422e09712ec2b42e5b75e2b4f8fa764294a828c1d7ed6983c998f6befebbf` |
+| `android-update.json` | 440 | `2f5ad9d37f5371195359389af7795c5c8c35fc2decd5f4df076669849d272931` |
+| `SHA256SUMS.txt` | 194 | `17286ae507131b6aec0258590d1dffc892b0852ce1852e07bb3d99f731f6dc72` |
+
+- 公开 APK 的 `apksigner verify --verbose --print-certs` 退出 0，v3=true，单一签名证书 SHA-256 `c5bec00b0721f580823a9bc9acda5285fa1c5e108ed3798d0ee3bc626c157985`，与 v2.1.6 相同。`aapt` 确认 `com.lumora.camera`、2.1.7 / code 11 / min 29 / target 35、非 debuggable；`zipalign -c -P 16 4` 通过。签名包有界暴露面扫描 98/100（B），`--fail-on high` 退出 0，无高危或严重项；仅 `allowBackup=true` 低风险与 3 项信息提示。旧未签名 APK 的 86/B 和 `APK-SIG` 高危项不适用于公开 APK，见[安全审查](SECURITY_AUDIT.md)。
+- **保留数据覆盖升级单独通过（限定范围）：** 独立 API 35 AVD 于 `2026-11-21T13:39:07Z` 完成公开同证书 v2.1.6 → v2.1.7 的一次 `adb install -r`。升级后 APK 摘要匹配，保留 2 张作品、1 张收藏、关闭的音量键快门及 4 个种入 JPEG 的 MediaStore 记录和文件哈希，复启后复核；未卸载、未清数据。2.1.6 无主题选择 UI，未种入 LIGHT，不验收主题保留。详见[验收报告](docs/TEST_REPORT.md#正式包保留数据覆盖升级)。
+- 实体 RAW/厂商 AF/扩展、12/48 MP 峰值内存、持久 URI 授权回收、提供方阻塞、实际云备份/迁移和实体安装器/多窗口，均不由本次发布证明。
 
 ## 历史发布记录
 
@@ -36,15 +45,15 @@
 - 候选本地构建、双 Lint、JVM、双 API 及平板回归，以及精确提交的远程 CI，均已在发布前完成；未签名 Release 仅作为中间验证产物，从未作为正式包分发。
 - 发布前文档中的“待签名/待升级”表述均由上方 v2.1.6 发布证据取代；历史 2.1.5 仍无单独标签或 Release。
 
-## 2.1.5 / code 9 候选（源码已入 main，未发布）
+## 2.1.5 / code 9 候选（历史：未单独发布，修复随 2.1.6 交付）
 
 - 源码提交 [`592b7694abc265ad6e74c51587540f670fe207b3`](https://github.com/yuchen0x1/LUMORA-Camera/commit/592b7694abc265ad6e74c51587540f670fe207b3) 已快进进入并实际推送 main；`git ls-remote` 返回同一 SHA，没有强推。
 - [主线 CI](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44837860635) 的构建/Lint、API 29/35 与 Android verification 全部 success；[Dependency security](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44837860645) success。
-- 已显示精确目标、版本、标题和正式稳定发布摘要，请求最终发布确认，尚未收到回答；不视作批准或拒绝。**没有创建 v2.1.5 标签或 Release，没有触发签名发布，也没有正式 APK 可分发。** 当前公开稳定版仍为 v2.1.4。
+- 已显示精确目标、版本、标题和正式稳定发布摘要，请求最终发布确认，尚未收到回答；不视作批准或拒绝。**没有创建 v2.1.5 标签或 Release，没有触发签名发布，也没有正式 APK 可分发。** 当时公开稳定版为 v2.1.4。
 - 纯文档提交 `334c7de` 的 [CI 44839582512](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44839582512) 随后暴露取消边界测试调度竞态：API 29 的 73 项中 1 项失败；未将该运行称为通过。仅修正测试同步，保留全部回滚断言；本地 API 29/API 35 独立重复分别 50/50、20/20，常规各 73/73、平板 18/18 通过，生产 APK 字节摘要不变。
 - 后续测试修正提交 `2cda675` 的 [CI 44841433689](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44841433689) 又在 API 35 既有图库导航暴露 Compose 测试无 Looper 问题；构建/Lint、API 29 和依赖通过，但整体失败。仅显式约束该测试类调度并新增主 Looper 回归；在独占设备双 API 各 20 轮三项专项、常规各 74/74、平板 19/19 通过。生产 APK 字节未变，详见验收报告；不使用失败运行充当通过证据。
 - 最终候选为 `e60a4ebabebb699ab1304d59f0ee4a901d633b05`，含两项测试修正，已快进并实际推送 main，远程 SHA 一致；[Android CI 44845826727](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44845826727) 构建/Lint、API 29/35 和汇总全成功，[依赖工作流 44845826747](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44845826747) 成功，两者 headSha 精确匹配。`592b769` 仅作原始修复证据，不作为最终发布目标。后续纯文档证据提交不改变该候选源码或测试。
-- 对最终候选以 v2.1.5 / LUMORA Camera 2.1.5 正式稳定发布的最终确认仍未取得，不能因旧目标未获回答而推断批准。没有创建标签、Release 或正式签名资产，当前公开稳定版仍为 v2.1.4。
+- 对最终候选以 v2.1.5 / LUMORA Camera 2.1.5 正式稳定发布的最终确认仍未取得，不能因旧目标未获回答而推断批准。没有创建标签、Release 或正式签名资产；当时公开稳定版为 v2.1.4。
 - 确认后才能新建标签触发既有受保护签名流水线；后续还必须验签、核对公开摘要并验证保留数据覆盖升级。不得重复打旧标签、移动已发布标签或上传本地未签名中间包。
 - 真实本地测试、研究、已知问题及交付边界见 [2.1.5 报告](docs/EVOLUTION-2.1.5.md)。
 

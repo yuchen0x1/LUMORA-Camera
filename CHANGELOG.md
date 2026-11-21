@@ -1,13 +1,13 @@
 # Changelog
 
-## 2.1.7 - 2026-11-21（未发布候选，versionCode 11；进行中）
+## 2.1.7 - 2026-11-21（versionCode 11）
 
 - 范围：RAW、主题/安全区、PRO 可保存状态、预览 OOM 降级，以及有界进程所有的拍摄/渲染队列与持久日志；同时提供仅新增的索引恢复预览、隐私提示和错误处理。
 - 拍摄／界面：迁入 RAW、主题/安全区及 PRO 可保存状态，修正生产深色窗口 backing；测试覆盖真实 360dp、fontScale 200% 的 LIGHT/DARK 时钟像素与页面断言。人工 fixed-width floating LIGHT 白图标仍有 caveat，不声称实体 RAW/厂商表现已验收。
 - 可靠性／恢复：仅预览 OOM 降级，有界且进程所有的拍摄/渲染队列、检查写入的持久日志、移除墓碑与重建协调；显式且仅新增的索引恢复预览、隐私提示和错误处理，不保证自动或完整恢复。新增 3 项持久化回归及受控时钟 fixture，不作跨版本性能或画质声明。
 - 更新：安装会话保留 APK 到同一会话结果返回后才释放删除，配有双 API 真实系统安装器取消 fixture；同版本 test client 不覆盖下载/递增版本门禁、UpdateDialog 接线、实体设备或多窗口。
 - 工程／安全：DocumentFile 1.1.0、可信来源的新 Gradle 9.1.0 Wrapper、STRICT 锁/校验和 919/919 官方摘要审计；备份只允许 `lumora_preferences.xml` / `lumora_updates.xml`，日志隐式排除。已实际重跑 JVM 53/53，Debug/Release 与无 suppression 严格 Lint 通过；CI 已配置真实 360dp、100 张耐久及可复用 CodeQL（java-kotlin / python / actions）门禁，配置存在不等于每次远程执行结果。
-- 验证范围：最终重建 Debug/test APK 的 API 29/35 默认矩阵 **150/151**、真实 360dp/fontScale 200%、平板 **8 项**、100 张耐久（保留 200 个 JPEG）及双 API 系统安装器取消均已按 SHA-256 身份重新验收；具体结果见 [TEST_REPORT](docs/TEST_REPORT.md)。厂商 AF/扩展、实体硬件、12/48 MP 峰值内存、持久 URI 授权回收、提供方阻塞及实体安装器/多窗口仍是独立产品边界；不声称跨版本速度、画质或内存改善。
+- 验证范围：标签 CI 的 API 29/35 默认矩阵 **150/151**、真实 360dp/fontScale 200%、平板 **8 项**、100 张耐久（保留 200 个 JPEG）及双 API 系统安装器取消均通过；标签报告与本地快照分别见 [TEST_REPORT](docs/TEST_REPORT.md)，正式资产见[发布历史](RELEASE_HISTORY.md)。厂商 AF/扩展、实体硬件、12/48 MP 峰值内存、持久 URI 授权回收、提供方阻塞及实体安装器/多窗口仍是独立产品边界；不声称跨版本速度、画质或内存改善。
 
 ## 2.1.6 - 2026-11-21
 

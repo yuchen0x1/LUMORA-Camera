@@ -1,11 +1,10 @@
 # 平台与分发
 
-## 当前候选：2.1.7 / code 11（2026-11-21，未发布）
+## 当前公开稳定版：v2.1.7 / code 11（2026-11-21）
 
-- 公开分发仍为 **v2.1.6 / code 10 / minSdk 29**。2.1.7 / code 11 未推送/打正式标签/发布，提交以 git HEAD 为准，没有新增已交付平台；远程 CI、签名前 CodeQL、签名与公开资产未完成。
-- EOF 空行清理后构建/Lint 与 JVM 53/53 实际重跑通过。Debug/未签名 APK 摘要变化后，当前精确 Debug/test APK 已重新通过 API 29/35 默认集 150/151、双 API 安装器取消、真实 360dp/fontScale 200%、100 张耐久/200 JPEG 与平板 8/8；当前 8 张真实窄屏截图已复核。报告见 [TEST_REPORT](TEST_REPORT.md)。同版本 test-client fixture 不覆盖网络/递增版本门禁、UpdateDialog、实体设备或多窗口；备份迁移仍待验证。
-- 人工 fixed-width floating LIGHT 白图标 caveat 保留；CI 已加入真实 360dp/时钟像素与 opt-in 耐久检查，配置不替代远程 CI、硬件或正式发布验收。未签名 Release APK 不可作为正式分发资产；远程 CI、CodeQL、签名与正式升级仍待独立通过。
-- RAW/厂商 AF/扩展、实体硬件、12/48 MP 峰值内存、持久 URI 授权回收、提供方阻塞及实体安装器/折叠多窗口仍需独立验收。实际 APK 身份、全部失败与快照细节见 [TEST_REPORT](TEST_REPORT.md)。
+- 仅分发 Android APK，minSdk 29、targetSdk 35，无新增已交付平台。源码/标签、远程 CI 与 CodeQL、受保护签名、签名 APK 安装启动和三项公开资产的独立验签见[发布历史](../RELEASE_HISTORY.md)。本地未签名中间包不可分发。
+- 标签 CI 通过 API 29/35 默认集 150/151、双 API 真实安装器取消、360dp/fontScale 200%、100 张耐久/200 JPEG 和平板 8 项；报告与历史快照见[验收报告](TEST_REPORT.md)。人工 fixed-width floating LIGHT 白图标仍是独立限制。同版本 test-client fixture 不覆盖真实下载/递增版本门禁、UpdateDialog、实体设备或多窗口。
+- 公开 v2.1.6 → v2.1.7 的同证书 ADB 覆盖升级已在独立 API 35 模拟器通过限定范围验收，不覆盖主题、备份迁移或实体安装器。实体 RAW/厂商 AF/扩展、12/48 MP 峰值内存、持久 URI 授权回收、提供方阻塞、实际云备份迁移及实体安装器/折叠多窗口仍需独立验证。
 
 ## 平台评估与公开版背景（历史保留）
 
@@ -44,9 +43,9 @@ LUMORA 的核心是按镜头能力取景和拍摄、保留来源 JPEG、在设�
 
 ## Android 版本与分发
 
-- 当前公开稳定版为 v2.1.6 / versionCode 10 / minSdk 29；2.1.5 未单独发布，修复随 2.1.6 交付。公开版本和安装资产以 [GitHub Release v2.1.6](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.6) 为准。保留 `v2.1.0`、2.1.1 与历史调试签名测试版的记录。
+- 当前公开版本和安装资产以 [GitHub Release v2.1.7](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.7) 为准；后续稳定版须高于 2.1.7 / versionCode 11。2.1.5 未单独发布，修复随 2.1.6 交付。保留 `v2.1.0`、2.1.1 与历史调试签名测试版的记录。
 - `version.properties` 是版本来源，标签须与 `versionName` 一致；稳定版版本号、版本码递增，并沿用已公开稳定版的签名证书。
-- v2.1.6 标签触发的发布流程已完成源码、API 29/35、构建/Lint、受保护签名、签名包安装启动和公开资产校验；APK、`android-update.json` 与 `SHA256SUMS.txt` 已独立下载复核。
+- 仅使用受保护发布流程生成且经独立复核的 APK、`android-update.json` 与 `SHA256SUMS.txt`；不分发本地未签名包或调试包。
 - 应用内更新仅接受 GitHub 稳定版并在安装前核验已安装包与候选包证书。公开调试测试版无法覆盖安装不同签名的正式版；勿为升级直接卸载，以免丢失本地作品索引和设置。
 - 已知漏洞依赖已按公告设置修复下限（Guava、Bouncy Castle、Netty、Kotlin 构建插件等，见 SECURITY_AUDIT.md）；公开发布证据和未完成硬件/安装器边界见发布历史与问题清单。
 

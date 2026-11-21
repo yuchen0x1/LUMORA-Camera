@@ -1,15 +1,15 @@
 # 自主开发记录
 
-## 2026-11-21：2.1.7 / code 11 候选进行中（未发布）
+## 2026-11-21：v2.1.7 / code 11 已公开发布
 
-- 公开稳定版仍为 v2.1.6 / code 10；独立 `lumora-evolution-217` 的 2.1.7 / code 11 候选未推送/打正式标签/发布，提交以 git HEAD 为准。原 E 盘 status/binary diff 指纹均匹配，历史证据不改写。
-- 候选已迁入 RAW、主题/安全区、PRO 可保存状态、仅预览 OOM 降级、有界进程所有的队列与持久日志（检查写入、移除墓碑、重建协调）、显式且仅新增的索引恢复预览/隐私提示/错误处理。
-- EOF 空行清理后重建成功，Debug/Release、无 suppression 严格 Lint 与 JVM 53/53 实际重新执行通过；生产逻辑未改，但 Debug/未签名 APK 摘要已变化，故对冻结新包重新验收，而非套用旧快照。
-- 当前不可变产物通过 API 29/35 默认矩阵 150/151、双 API 真实安装器取消、真实 360dp/fontScale 200%、100 张耐久保留 200 JPEG及 API 35 平板 8/8；8 张当前窄屏截图已人工复核。测试 fixture 不覆盖下载/递增版本门禁、UpdateDialog、实体设备或多窗口；人工 fixed-width floating LIGHT 白图标 caveat 仍保留。
-- DocumentFile 1.1.0、可信来源的新 Gradle 9.1.0 Wrapper、STRICT 锁/校验、919/919 官方摘要审计（0 mismatches/bypasses；元数据 `SHA800c2a465d9b37c1495a35347c9e92662d85113995b0939c8f54702d740c4b5e`）及两份偏好 XML 备份白名单保持；日志隐式排除，宽泛 suppression 已移除。新未签名 Release APK 已按准确摘要做有界静态检查；唯一 high 为预期的未签名 APK-SIG，产物不能分发，受保护签名后需重新核验新摘要。
-- 远程 CI、实际 CodeQL/告警、签名/公开资产与正式升级仍未完成；URI 授权回收、提供方阻塞、实体硬件、厂商 AF/扩展、12/48 MP 内存与实体安装器/多窗口继续开放，不宣称积压全关或性能/画质改善。
+- 在独立 `lumora-evolution-217` 工作树完成维护。源码 `7778eb8a5b43fe7f940ae2ec446bed6e0cc50c98` 已进入 `main`；新轻量标签 `v2.1.7` 固定指向该提交。原 E 盘 status/binary diff 指纹均匹配，历史证据不改写。
+- 交付 RAW、主题/安全区、PRO 可保存状态、仅预览 OOM 降级、有界进程所有的队列与持久日志（检查写入、移除墓碑、重建协调）、显式且仅新增的索引恢复预览/隐私提示/错误处理。
+- 发布前 EOF 空行清理后曾重建 Debug/Release、无 suppression 严格 Lint 与实际 JVM 53/53；生产 APK 摘要变化时按冻结产物重验。之后图库 fixture/CI 修正的本地测试 APK 与早期全矩阵结果按产物分开，未把早期专项写成后来重跑。原远端 API 35 进程退出及 API 29 超时仍是失败记录。
+- 源码 main push CI 44900113421 成功；标签 run 44902474570 第 1 次尝试 11 个 job 全部成功。七份标签仪器报告与三语言 CodeQL 独立复核；正式签名 APK 与元数据、摘要清单另行从公开 Release 下载复核。详见[发布历史](RELEASE_HISTORY.md)与[验收记录](docs/TEST_REPORT.md)，不将旧未签名中间包的 `APK-SIG` 高项套用到公开包。
+- DocumentFile 1.1.0、可信来源的新 Gradle 9.1.0 Wrapper、STRICT 锁/校验、919/919 官方摘要审计（0 mismatches/bypasses；元数据 `SHA800c2a465d9b37c1495a35347c9e92662d85113995b0939c8f54702d740c4b5e`）及两份偏好 XML 备份白名单保持；日志隐式排除，宽泛 suppression 已移除。
+- 独立 API 35 的公开同证书 v2.1.6 → v2.1.7 覆盖安装通过限定范围验收：保留 2 张作品、1 张收藏、关闭的音量键快门及 4 个样本 JPEG，复启复核，不涵盖主题。人工 fixed-width floating LIGHT 白图标、UpdateDialog、URI 授权回收、提供方阻塞、实际云备份迁移、实体 RAW/厂商 AF/扩展、12/48 MP 内存与实体安装器/多窗口继续开放。
 
-每轮构建、两次真实窄屏失败、早期 148/147 与耐久指标、当前完整本地门禁、APK 静态审计边界、安装 incident 和 fixture 范围统一保留于[验收记录](docs/TEST_REPORT.md)。
+每轮构建、真实窄屏失败与截图、早期 148/147 与耐久指标、APK 审计边界、安装 incident 和 fixture 范围均保留于[验收记录](docs/TEST_REPORT.md)。不宣称积压全关或跨版本性能/画质改善。
 
 ## 2026-11-21：2.1.6 / code 10 已发布
 

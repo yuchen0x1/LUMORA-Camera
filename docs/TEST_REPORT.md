@@ -1,10 +1,29 @@
 # LUMORA Camera 验收报告
 
-## 2.1.7 / code 11：候选验证进行中（2026-11-21，未发布）
+## 2.1.7 / code 11：正式发布与验收（2026-11-21）
 
-**公开稳定版仍为 2.1.6 / code 10。** 以下分开记录实际取得的本地与远端证据；本地通过不等于远端门禁、签名或正式发布。原 E 盘工作树的 `git status -z` 与 binary diff 指纹在修正哈希序列化后均匹配；这不抹去下方设备安装 incident。
+**公开稳定版为 v2.1.7 / code 11 / minSdk 29 / targetSdk 35**，发布源码及轻量标签均绑定 `7778eb8a5b43fe7f940ae2ec446bed6e0cc50c98`。发布（ID `453675180`，`2026-11-21T12:27:00Z`）、公开签名资产复核和保留数据覆盖升级是独立结论。历史本地结果及失败不改写。原 E 盘工作树的 `git status -z` 与 binary diff 指纹在修正哈希序列化后均匹配；这不抹去下方设备安装 incident。
 
-### 远端阻断与图库测试夹具修正（2026-11-21，尚未发布）
+### 标签发布流水线与独立报告复核
+
+- [源码 main push CI 44900113421](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44900113421) 成功；它不是 [标签发布 run 44902474570](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44902474570)。标签 run 第 1 次尝试 11 个 job 全部成功，包括复用 CI、CodeQL、受保护签名、签名 APK 安装启动、草稿及公开资产校验。独立证据入口：`D:/BuildTemp/lumora217-tag44902474570-evidence-ea6c694a29/tag-review-summary.json`；同目录保留 `security-review-summary.json`、`verification/instrumentation-review-summary.json`、`verification/build-reports-review-summary.json`。以下指标只属标签 run，不替换 main push 或本地快照。
+- **实际 CodeQL 2.27.5**：分析键 `.github/workflows/release.yml:analyze`，ref `refs/tags/v2.1.7`，精确匹配发布 SHA；java-kotlin `2220686804`（76 条规则）、python `2220682858`（43）、actions `2220682811`（17）均 0 results、无 error/warning。2026-11-21 `13:31:28Z`–`13:31:32Z` 完整分页查询：仓库级、`main` 与标签 Code Scanning 开放告警均 0，开放 Dependabot 告警 0；这是时间点快照，不等于无漏洞或已处理依赖 PR。
+- **三份 CI 工件**（构建报告 `14705988862`、API 29 `14706647327`、API 35 `14707175657`）均核对归档大小和 SHA-256；报告复核包含 215 个构建断言、117 个仪器协议断言。JVM HTML **53 通过、0 失败、0 ignored**；Debug 和 Release Lint **各 51 Warning、0 Error/Fatal**，不是本地的各 38 Warning。
+- **七份原始仪器报告**：API 29 默认 150、真实安装器 1；API 35 默认 151、真实安装器 1、360dp/fontScale 200% 窄屏 1、耐久 1、平板 8。合计 313 次方法 start 与对应 passed status `0`；每份均有正的 `OK (N tests)` 及唯一、末行正常 `INSTRUMENTATION_CODE: -1`，未发出 error/failure/ignored/assumption 状态。该计数不排除用例内部条件提前返回，也不证明实体硬件路径已运行。两端真实安装器均记录 `RESULT_CANCELED` 后释放 retired APK；未在该 fixture 中实际安装。
+- **标签耐久**：`previewMs=60814`，完成 100 张、保留 200 JPEG；`medianMs=2316`、`p95Ms=2438`、`maxMs=3066`、`largestSampledPssKb=127252`、`elapsedMs=234391`。PSS 为间隔采样，不是实体机峰值；不作跨版本速度、画质或内存改善声明。
+
+### 独立公开资产与签名核验
+
+恰好三项公开资产的下载大小、SHA-256、GitHub API 摘要及更新元数据/`SHA256SUMS.txt` 的对应条目一致；摘要、证书和发布身份见[正式发布历史](../RELEASE_HISTORY.md#v217-发布证据当前公开稳定版)。独立证据：`D:/BuildTemp/lumora217-public-verified-qq92g04r/evidence/verification.json`。APK 的 apksigner 退出 0、v3=true、单一签名者且证书与 v2.1.6 相同；aapt 身份/非 debuggable 和 16 KiB zipalign 检查通过。独立核验首次以严格证书正则解析时被 Windows CRLF 输出阻断；保存的 apksigner 输出实际为成功，按 `splitlines()` 逐行精确核对指纹后继续，未重新下载、签名或发布。签名包扫描为 98/B，`--fail-on high` 退出 0，只有 `allowBackup=true` 低风险和 3 项信息提示，无高危/严重项；下方 86/B 的 unsigned `APK-SIG` 是历史中间包记录，见[安全审查](../SECURITY_AUDIT.md)。
+
+### 正式包保留数据覆盖升级
+
+- **限定范围通过**（`PASS_SCOPED_PRESERVE_DATA_UPGRADE`，`2026-11-21T13:39:07Z`）：仅在独立 API 35 AVD `lumora_release217_upgrade_722cd4ec` / `emulator-5564` 以一次成功的 `adb install -r` 将公开同证书 v2.1.6 / code 10 覆盖到 v2.1.7 / code 11。安装后 APK 为 50,492,714 B，SHA-256 与独立公开下载一致；`firstInstallTime` 保持 `2026-11-21 10:31:26`，`lastUpdateTime` 更新为 `2026-11-21 13:36:13`（设备记录）。无卸载、清数据、wipe 或重新种入样本；升级意向/结果 marker 均已保留，helper 与 seed seal 未变。发布 SHA 的独立证明不来自旧 seed 中的 `3474251` 意向记录。
+- 4 个种入的 `Pictures/LUMORA/` JPEG 的 MediaStore URI/记录元数据及文件 SHA-256 全部一致；图库仍为两张 NATURAL 作品（11:08、11:09），11:08 作品仍为唯一收藏，音量键快门仍为关闭，已检查应用再次启动后的持久性。图库与设置截图 `upgrade-0144-gallery-verified.png`、`upgrade-0107-preferences-volume-false-theme-not-covered.png` 已人工复核。v2.1.6 无主题选择 UI、未种入 LIGHT，`themeMode=null`，主题保留不在验收范围。
+- 证据目录 `D:/BuildTemp/lumora217-formal-upgrade-yzesl5wu/harness-evidence/`：`result.json` 为升级结论与边界；`post-success-restoration.json` 记录恢复飞行模式 0、Wi-Fi 1，并回读移动数据 1 与窗口/转场/Animator 1.0/1.0/null（后者原已匹配，无需重写）。初次停止前检查把 PID 0 的 TCP TIME_WAIT 计为外部占用，未发停止命令；复核活动端口所有者后仅停止该专用 AVD。`owned-avd-stop.json` 记录保留 userdata、宿主进程退出、ADB 序列号消失及 5564/5565 无活动占用。下方封存基线与早期失败续接记录保留。
+- 不覆盖私有/孤立文件、主题、RAW、导入、编辑、恢复、设备重启、备份恢复、其他 API、实体设备或实体光学画质；也不等同于真实安装器交互、生产下载或多窗口验收。
+
+### 发布前远端阻断与图库测试夹具修正（历史）
 
 - 原提交 `3474251d5e95d0aa1c92d241c9b264c86ac9e3c5` 已快进推送至 main。Android CI `44892891363` 的构建/JVM/Lint job 成功，下载报告为 JVM 53 项、0 失败/错误/跳过，Debug/Release Lint 各 51 Warning、0 Error/Fatal；API 35 默认集在 `GalleryRecoveryAndExitTest` 中报告 `Process crashed`，没有正 OK、方法名或崩溃栈，按失败阻断发布。API 29 原 job 最终 cancelled；精确 job `136813957385` 的 check annotations 明确为超出 1h0m0s 最大执行时间，汇总 Android verification 失败。终态证据保存在 `D:/BuildTemp/lumora217-remote-api29-terminal-hllj8c7z`；没有据此证明具体阻塞方法或把超时当作通过。不能用同期 ColorBuffer 警告断言 API 35 崩溃根因是环境。
 - 原提交的 CodeQL `44892891383` 已完成实际 java-kotlin、python、actions 分析，精确 head SHA 均匹配且各 0 results；当轮分页代码扫描与 Dependabot open alerts 均为空。这些安全结果只绑定原提交，不替代新修正的适用门禁。
@@ -16,9 +35,9 @@
 - API 29 首次图库运行保留 **6 通过、2 个 RootViewWithoutFocus 失败**。保存的 logcat/window/XML 证明当时有 SystemUI 的 `BOOT_COMPLETED` ANR 弹窗抢焦点；只点击一次实际 Wait 后图库 8/8，但后续完整集仍有 **1 个 LIGHT 时钟像素失败**。截图确认系统时钟完全未绘制，窗口转储的 SystemUI StatusBar 为 `mHasSurface=false`，不是通过降低像素断言解决。仅对准确匹配的本任务 API 29 正常重启、保留 userdata，确认真实状态栏 surface、可见时钟及无 ANR 弹窗后再跑完整集；以上失败原样保留。
 
 - 新包 QA 收尾：API 35/29 均仅停止本任务准确匹配的 AVD，保留 userdata；两宿主最终 exit 0。API 29 停止前读回 fontScale 1.0、物理 1080×2400 / density 420 且无 override、窗口/转场动画 1.0、animator 缺省 null、安装 app-op default；本轮没有父任务几何/动画/网络改写，不虚构执行过额外恢复。此前历史轮 API 35 宿主 exit 1 的记录仍保留，不与本轮混用。
-- 正式升级前的独立 2.1.6 基线已封存，**尚未升级**：`lumora_release217_upgrade_722cd4ec` / `emulator-5564`，正式 2.1.6/code 10、50,230,458 B、APK SHA-256 `e972446e77e35fdfc7c5da60d626fc4ee5c38797efb2f320dd70b011e706fdb6`。两次实际 UI 拍摄保留 4 个原图/成片 JPEG，收藏 1、音量键快门关闭，经应用停止/重启及媒体 URI/文件哈希复核。**正式 2.1.6 没有主题选择 UI，未种入 LIGHT，也不覆盖主题偏好保留。** helper 与 seed seal 已独立核验，manifest SHA-256 `b079b8ff2ad820293ca6b0a916ccb4b602452be639582dfecf61650cbb373f27`；没有 candidate 或 upgrade intent。先前权限/预览 selector 失败与各续接意向记录保留，未重放安装、拍摄或收藏。旧 `3474251` 只作原意向 provenance，不是新候选源码证明。父任务再核设备身份、正式 2.1.6 安装摘要及无活动网络后，仅停止该专用 AVD，保留 userdata 与离线隔离；宿主 exit 0。暂停证据 `D:/BuildTemp/lumora217-sealed-baseline-pause-7fo8uup5`，seed seal 未变。原网络设置的恢复留待尚未完成的正式覆盖升级结束后执行，不提前破坏其隔离条件。
+- 正式升级前的独立 2.1.6 基线已封存（此处记录升级前的状态）：`lumora_release217_upgrade_722cd4ec` / `emulator-5564`，正式 2.1.6/code 10、50,230,458 B、APK SHA-256 `e972446e77e35fdfc7c5da60d626fc4ee5c38797efb2f320dd70b011e706fdb6`。两次实际 UI 拍摄保留 4 个原图/成片 JPEG，收藏 1、音量键快门关闭，经应用停止/重启及媒体 URI/文件哈希复核。**正式 2.1.6 没有主题选择 UI，未种入 LIGHT，也不覆盖主题偏好保留。** helper 与 seed seal 已独立核验，manifest SHA-256 `b079b8ff2ad820293ca6b0a916ccb4b602452be639582dfecf61650cbb373f27`；没有 candidate 或 upgrade intent。先前权限/预览 selector 失败与各续接意向记录保留，未重放安装、拍摄或收藏。旧 `3474251` 只作原意向 provenance，不是新候选源码证明。父任务再核设备身份、正式 2.1.6 安装摘要及无活动网络后，仅停止该专用 AVD，保留 userdata 与离线隔离；宿主 exit 0。暂停证据 `D:/BuildTemp/lumora217-sealed-baseline-pause-7fo8uup5`，seed seal 未变。封存时暂不恢复原网络设置，以保持升级前的离线条件；升级后恢复和回读结果见上方。
 
-**新修正尚未取得远端门禁或正式签名发布证明。** 未创建/移动/推送 v2.1.7 标签；2.1.6→2.1.7 正式包保留数据覆盖升级仍待完成。原 E 盘工作树的 binary diff 与 `status -z` 哈希本轮再次匹配保护快照。
+这是发布前修正与 QA 的证据；此阶段尚无新提交的远端门禁、标签发布或覆盖升级结果。此后的门禁和正式发布见本报告开头。原 E 盘工作树的 binary diff 与 `status -z` 哈希本轮再次匹配保护快照。
 
 ### 原提交本地 APK 绑定门禁（旧测试 APK 历史快照）
 
@@ -83,7 +102,7 @@ CI 现在默认排除 opt-in 真实安装器用例，在两种 API 上独立执�
 - 当前 API 35：`D:/BuildTemp/lumora217-frameclock-final35-default.txt` **OK 151 / 214.106s**（151 start、151 code 0）；`D:/BuildTemp/lumora217-frameclock-final35-realinstaller.txt` **OK 1 / 3.221s**；`D:/BuildTemp/lumora217-frameclock-final35-endurance.txt` **OK 1 / 352.27s**；`D:/BuildTemp/lumora217-frameclock-final35-tablet.txt` **OK 8 / 28.45s**。这些结果与 API 29、真实 360dp 结果共同构成当前本地 frameclock 验证，不替代实体硬件验收。
 - 当前耐久指标来自按本次运行开始时间过滤的 `D:/BuildTemp/lumora217-frameclock-final35-endurance-metrics.txt`，不是旧 PASS 快照：`previewMs=61504`、`completed=100`、`retainedJpegs=200`、`medianMs=2793`、`p95Ms=3164`、`maxMs=3476`、`largestSampledPssKb=138742`、`elapsedMs=286774`、`thermal sampled=0`。仅在 1856×1392 模拟器采样；PSS 不是真实峰值，本 fixture 含受控时钟驱动，不作跨版本性能、画质或内存改善声明。
 - 失败轮次仍按原样保留；本轮仅停止名称精确匹配的任务专用 5560/5562 AVD，恢复 `window_animation_scale` / `transition_animation_scale=1.0`，删除原本为 null 的临时 animator 全局键，确认 1080×2400、density 420、无 override、fontScale 1.0 与 app-op default。未声称 night mode 被恢复；未 wipe、卸载或 `pm clear`，样本和 userdata 保留。两台设备随后仅被安全停止。
-- 当轮本地门禁已取得结果，完整记录保留；之后 EOF 清理重建导致 Debug/未签名 APK 摘要变化，新产物设备门禁重新验收中。远程 CI、实际 CodeQL/告警、签名公开资产及 2.1.6→2.1.7 正式覆盖升级仍待授权和独立验收；2.1.7 继续标为未发布。
+- 当轮本地门禁已取得结果；之后 EOF 清理重建导致 Debug/未签名 APK 摘要变化，故重新验收新产物。该历史快照早于远程最终 CI、实际 CodeQL/告警、正式签名及公开资产和覆盖升级验收；后续结果见本报告开头，不回填到本轮。
 
 ### 历史阶段结果（保留失败与已有通过）
 
@@ -137,7 +156,9 @@ CI 现在默认排除 opt-in 真实安装器用例，在两种 API 上独立执�
 
 候选范围：迁入 RAW/主题/安全区、仅预览 OOM 降级、PRO 可保存状态、进程所有的有界拍摄/渲染队列与持久日志（检查写入、移除墓碑、重建协调）、显式且仅新增的索引恢复预览/隐私提示/错误处理；DocumentFile 1.1.0、可信来源的新 Gradle 9.1.0 Wrapper、STRICT 锁与依赖校验、两份偏好 XML 备份白名单及云备份/设备迁移排除拍摄日志。上述本地通过只证明所测范围，不保证完整损坏恢复、任意异常终止或设备迁移行为。
 
-原提交 `3474251` 已推送 main，其远端构建/JVM/Lint 和实际三语言 CodeQL 通过，但 Android CI 因 API 35 进程退出及 API 29 一小时超时而失败。本轮图库 fixture / CI 诊断修正的精确提交以本地 git HEAD 为准；尚未推送，仍需适用远端门禁及新的精确发布确认；**2.1.7 未发布，未创建/移动/推送正式标签，受保护签名与公开资产核验仍待完成**。生产 APK 字节未变，本轮新测试 APK 的双 API 图库与完整默认集已通过；真实 360dp 窄屏、平板、100 张耐久与安装器取消属于旧测试 APK 的独立历史通过，不冒充本轮新测试包重跑。详细结果与各自产物边界见本报告开头。UpdateDialog 接线、真实云备份迁移、实体安装器与多窗口、持久 URI 授权引用回收、外部提供方阻塞、厂商 AF/扩展、实体硬件和 12/48 MP 峰值内存继续开放。不得从模拟器 OK 总数推断零硬件跳过，不声称全部积压关闭或跨版本性能/画质改善。当前未签名 APK 暴露面 86/B 为启发式相对分数；唯一高项是预期的 APK-SIG 未签名阻断、不能分发，详见 [安全审查](../SECURITY_AUDIT.md) 与上方按摘要绑定的静态复核。
+原提交 `3474251` 的远端构建/JVM/Lint 和实际三语言 CodeQL 通过，但 Android CI 因 API 35 进程退出及 API 29 一小时超时而失败。发布前图库 fixture / CI 诊断修正后，本地生产 APK 字节未变，新测试 APK 的双 API 图库与完整默认集通过；360dp、平板、100 张耐久与安装器取消是旧测试 APK 的独立历史通过，不冒充新测试包的本地重跑。最终标签流水线另有七份独立复核报告，见本报告开头。历史未签名 APK 的 86/B 与预期 `APK-SIG` 高项只绑定该不可分发中间产物；公开签名包结论见上方与[安全审查](../SECURITY_AUDIT.md)。
+
+UpdateDialog 接线、真实云备份迁移、实体安装器与多窗口、持久 URI 授权引用回收、外部提供方阻塞、实体 RAW/厂商 AF/扩展和 12/48 MP 峰值内存继续开放。安装器取消 fixture 不覆盖真实下载及递增版本门禁；人工 fixed-width floating LIGHT 白图标 caveat 仍保留。不得从模拟器 OK 总数推断零硬件跳过，不声称全部积压关闭或跨版本性能/画质改善。`scripts/build-local.ps1` 仅过 PowerShell 语法解析，未运行脚本的完整 Wrapper 流程。
 
 ## 2.1.6 / code 10：最终本地验证与正式发布（2026-11-21）
 
