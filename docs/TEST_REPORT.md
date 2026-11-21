@@ -1,8 +1,8 @@
 # LUMORA Camera 验收报告
 
-## 2.1.6 / code 10 候选：最终本地验证（2026-11-21）
+## 2.1.6 / code 10：最终本地验证与正式发布（2026-11-21）
 
-下表针对本地合并提交 `6497ad1` 中包含 KTX setter、点按 AF 竞态封堵、同步回滚失败隔离及未知网格值保护的**准确最终源码快照**执行。该提交尚未推送、未触发最终远程 CI，也未发布签名资产。
+下表针对本地合并提交 `6497ad1` 中包含 KTX setter、点按 AF 竞态封堵、同步回滚失败隔离及未知网格值保护的**准确最终源码快照**执行；该提交随后进入 main 并作为 2.1.6 的发布基线。
 
 | 检查 | 最终本地结果 | 范围 |
 | --- | --- | --- |
@@ -16,7 +16,21 @@
 
 旧实现负向对照：旧网格实现的回归 1 项失败；旧 Compose 规则在主 Looper 与实际 `null` 的断言上确定性失败；旧 Python 校验器产生 28 个失败子断言（不是 28 个独立测试）。对应修正后的最终本地快照通过。真实 API 29 Debug [设置下拉截图](screenshots/v2.1.6-grid-settings-api29.png)只证明界面显示，不证明签名升级通过。
 
-精确提交 `ed5ddc4` 的远程 Android CI 44851133527（构建/Lint、API 29、API 35、汇总）和依赖检查 44851133546 已通过。**仍待验收：** 独立核验正式签名、身份、大小、摘要和公开三资产；从公开 v2.1.4/code 8 进行保留数据的签名覆盖升级。未运行独立 100 张耐久；未验证真实硬件的厂商扩展或物理清晰度，无 RAW 输出、无实测速率提升。[完整候选文档](EVOLUTION-2.1.6.md)记录范围与安全边界。
+精确提交 `ed5ddc4` 的远程 Android CI 44851133527（构建/Lint、API 29、API 35、汇总）和依赖检查 44851133546 已通过；最终发布提交 `0bfcead` 的 [Android CI 44851899943](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44851899943)、[依赖检查 44851899849](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44851899849) 与[发布流水线 44852568794](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44852568794) 同样全部成功，v2.1.6 已公开为非草稿稳定版。签名/身份/大小/摘要核验及从公开 v2.1.4 的保留数据覆盖升级已完成，见下节。未运行独立 100 张耐久；未验证真实硬件的厂商扩展或物理清晰度，无 RAW 输出、无实测速率提升。[完整交付文档](EVOLUTION-2.1.6.md)记录范围与安全边界。
+
+### 2.1.6 公开资产与保留数据覆盖升级（独立核验）
+
+| 检查 | 实际结果 |
+| --- | --- |
+| 公开 Release | `v2.1.6`，`draft=false`、`prerelease=false`，发布时间 `2026-11-21T02:00:37Z`，目标提交 `0bfcead473a850f7319fbf98193ed8e8cae96fd3` |
+| 公开资产 | APK 50,230,458 B（`e972446e…e706fdb6`）、`android-update.json` 440 B（`4256b15c…e85a26e`）、`SHA256SUMS.txt` 194 B（`27dfeb3f…c629dc`）；`sha256sum -c` 与 `android.py public --tag v2.1.6` 通过 |
+| 签名 | `apksigner` v3=true、v2=false；单一 RSA 3072 位 `CN=LUMORA Camera Release`，证书 SHA-256 `c5bec00b0721f580823a9bc9acda5285fa1c5e108ed3798d0ee3bc626c157985` |
+| 身份 | `com.lumora.camera`、versionCode 10、versionName 2.1.6、minSdk 29、targetSdk 35、compileSdk 36，无 `application-debuggable`；`zipalign -c -P 16 4` 通过 |
+| 暴露面扫描 | 公开签名包 98/100（B），仅 `allowBackup=true` 低风险；相对评分，不是绝对安全等级 |
+| 覆盖升级 | 独立 API 35 AVD `lumora_release216_upgrade`/`emulator-5558`；v2.1.4 → v2.1.6 `adb install -r`，作品“全部 2、收藏 1”保留，原图/成片可打开，音量键快门关闭与网格关闭保留 |
+| 媒体字节 | 4 个 JPEG 升级前后 SHA-256 一致（`99e0f7de…`、`cf4d6fa0…`、`03bfbbd6…`、`0218fbd0…`）；未卸载、未 `pm clear` |
+
+ADB 覆盖安装不等同于真实系统安装器交互/取消或多窗口生命周期验收；该 AVD 与用户其他设备相互独立，未清理任何既有 QA 设备。
 
 ## 2.1.5：局部索引保全与更新缓存隔离（2026-11-21 本地 / 2026-11-20 UTC）
 

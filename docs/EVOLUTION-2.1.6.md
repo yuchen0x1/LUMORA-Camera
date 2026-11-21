@@ -1,8 +1,8 @@
-# LUMORA Camera 2.1.6 / code 10 候选交付文档
+# LUMORA Camera 2.1.6 / code 10 发布交付文档
 
 ## 1. 概览
 
-2026-11-21 本地记录。**2.1.6 是未发布候选**（`versionName=2.1.6`、`versionCode=10`、`minSdk=29`）。最后核验的公开稳定版为 [v2.1.4 / code 8](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.4)；本候选包含未发布的 2.1.5 / code 9 索引保全与更新缓存隔离修复。
+2026-11-21 发布记录。**2.1.6 已正式公开**（`versionName=2.1.6`、`versionCode=10`、`minSdk=29`），并包含未单独发布的 2.1.5 / code 9 索引保全与更新缓存隔离修复。公开 Release 为 [v2.1.6](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.6)，发布目标为 `0bfcead473a850f7319fbf98193ed8e8cae96fd3`。
 
 ## 2. 功能
 
@@ -32,38 +32,33 @@
 
 **准确最终本地快照**：JVM 29/29；Python 3.14 19/19（Python 3.11.18 早期同组也为 19/19）；Debug、AndroidTest、未签名 Release 构建与双 Lint 成功，Lint 双变体均 0 错误、32 警告；API 29/35 常规集各 94/94（不含单独启用的 100 张耐久）；API 35 平板子集 11/11，完成后恢复 1080×2400 / 420 dpi；既往不稳定类重复 5 轮，每轮 14/14。
 
-旧网格实现有 1 项回归失败；旧 Compose 规则在主 Looper 与实际 `null` 的断言中确定性失败；旧 Python 校验器有 28 个失败子断言（不是 28 项测试）。对应修正后的最终本地快照通过。详见[验收记录](TEST_REPORT.md)。
+旧网格实现有 1 项回归失败；旧 Compose 规则在主 Looper 与实际 `null` 的断言中确定性失败；旧 Python 校验器有 28 个失败子断言（不是 28 项测试）。对应修正后的最终本地快照通过。发布前精确提交的 Android CI、依赖检查以及发布流水线也全部成功，详见[验收记录](TEST_REPORT.md) 和[正式发布历史](../RELEASE_HISTORY.md)。
 
 ## 8. Git 状态
 
-工作开始时的 `origin/main` 基线是 `2cda675`；隔离工作树先提交实现，再安全合并到最新 `origin/main` `9b0ae24`，当前本地合并提交为 `6497ad1`，尚未推送，原脏工作区未触碰。合并保留了 `e60a4eb` 的定点测试修正和 `9b0ae24` 的 2.1.5 证据；未将上游历史 CI 结果当作 2.1.6 的远程门禁。
+工作开始时的 `origin/main` 基线是 `2cda675`；隔离工作树先提交实现，再安全合并到 `9b0ae24`，最终发布提交为 `0bfcead473a850f7319fbf98193ed8e8cae96fd3`，已进入并推送远程 `main`，没有强制推送或移动历史标签。原脏工作区未触碰；合并保留了 `e60a4eb` 的定点测试修正和 `9b0ae24` 的 2.1.5 证据。
 
 ## 9. 发布与安全
 
-候选已推送至 `main`，提交 `ed5ddc4` 的 [Android CI 44851133527](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44851133527) 已通过构建/Lint、API 29、API 35 和汇总门禁；依赖检查 44851133546 也已通过。当前仍无 v2.1.6 标签、正式签名资产或 Release；签名包身份/公开摘要复核及从公开 v2.1.4 保留数据的签名覆盖升级待发布流程完成，以[正式发布历史](../RELEASE_HISTORY.md)为准。
+v2.1.6 已进入远程 `main` 并公开发布。发布目标为 `0bfcead473a850f7319fbf98193ed8e8cae96fd3`；[主线 Android CI 44851899943](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44851899943) 与[依赖检查 44851899849](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44851899849) 成功，随后[发布流水线 44852568794](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44852568794) 的所有 job 成功。Release 为非草稿、非预发布，公开资产与独立升级证据见[正式发布历史](../RELEASE_HISTORY.md)。
 
-### 安全证据
+### 公开资产与签名证据
 
-本地未签名 Release APK 暴露面扫描为 **86/B**；含预期的未签名高风险项及既有 `allowBackup=true` 低风险项。评分是该中间产物的扫描输出，不是绝对安全等级。
+- APK `LUMORA-Camera-2.1.6-Android-universal.apk`：50,230,458 字节，GitHub SHA-256 `e972446e77e35fdfc7c5da60d626fc4ee5c38797efb2f320dd70b011e706fdb6`。
+- `android-update.json`：440 字节，GitHub SHA-256 `4256b15c238b14235face9f148733f4eec1e44ed83b04caeaaf8fa364e85a26e`；`SHA256SUMS.txt`：194 字节，GitHub SHA-256 `27dfeb3ffefe49d64429c4b2a4ef378d29ff54fcfd11c6eac763d839f0c629dc`。`sha256sum -c` 与 `scripts/release/android.py public --tag v2.1.6` 均通过。
+- `apksigner` 确认 v3=true、v2=false，单一 RSA 3072 位 `CN=LUMORA Camera Release`，证书 SHA-256 `c5bec00b0721f580823a9bc9acda5285fa1c5e108ed3798d0ee3bc626c157985`。Badging 确认为 `com.lumora.camera`、versionCode 10、versionName 2.1.6、minSdk 29、targetSdk 35、compileSdk 36，未标记 debuggable；`zipalign` 通过。
+- 公开签名包的静态暴露面复测为 **98/100（B）**，仅剩 `allowBackup=true` 低风险提示。该扫描是相对排序，不替代威胁建模、密码学验签或真实设备安全评估；DEX 可读性是 MIT 开源客户端的正常属性。
 
-### 威胁与影响
+### 覆盖升级证据
 
-宽松的数值解析可能让发布端接受客户端拒绝的元数据，造成资产或更新不可用。未签名包没有正式签名身份、不得分发；`allowBackup` 的可导出范围取决于 Android 版本和设备备份策略。
+独立 API 35 AVD `lumora_release216_upgrade`（`emulator-5558`）先安装公开 v2.1.4，拍摄两张作品并收藏一张、关闭音量键快门，再使用 `adb install -r` 覆盖安装公开 v2.1.6 并冷启动。升级后 versionCode/versionName 为 10/2.1.6，作品库仍显示“全部 2、收藏 1”；第一张作品仍显示已收藏，原图与成片切换均实际打开。设置页仍显示音量键快门关闭、构图网格关闭。四个 JPEG 文件的名称、大小及 SHA-256 升级前后完全一致；未卸载、未执行 `pm clear`。
 
-### 修复与未改项
+### 威胁与未解决边界
 
-数值类型和范围校验在发布端失败即拒绝，并加入离线用例与 CI 步骤。本轮未新增秘密，未更换签名证书或信任根，也未更改备份策略。
-
-### 验证
-
-最终本地源码快照的 Python 3.14 通过 19 项，Python 3.11.18 早期同组也通过 19 项；旧校验器对同组回归有 28 个失败子断言。尚未通过候选最终 CI，且未对其公开包运行独立签名、身份、大小和摘要核验。
-
-### 局限
-
-静态扫描不能替代密码学验签、真实安装器或数据保留验收。早期未签名 APK 和历史公开版的结果均不能证明本候选的签名链、升级或备份策略安全。
+本轮未新增秘密、未更换签名证书或信任根，也未更改备份策略。`allowBackup=true` 仍是低风险加固候选，是否关闭需评估用户备份照片的预期。独立 100 张耐久、真实硬件厂商扩展/实体清晰度、外部媒体提供方阻塞、系统安装器取消/多窗口生命周期、预览 OOM、EXIF 方向专项、`SharedPreferences.apply()` 异常终止耐久、URI 授权回收与依赖锁定仍未完成，不写成已验证。
 
 ## 10. 后续
 
-1. 保留单独的 100 张耐久和实体镜头/扩展验收；最终本地构建、双 Lint、离线测试、双 API 常规及平板专项，以及精确提交的远程 CI 已完成。
-2. 取得发布授权后走既有受保护流程，留存签名、公开三资产及保留作品、原片和偏好的覆盖升级证据。未签名包不可分发。
-3. 保留[问题清单](../AUTONOMOUS_ISSUES.md)中的相机异步错误、外部提供方阻塞、`SharedPreferences.apply()` 落盘耐久性、预览 OOM、EXIF 元数据与方向、安装器文件租约、URI 授权回收及依赖锁定，均不标为本轮解决。
+1. 保留独立的 100 张耐久、实体镜头/厂商扩展、12/48 MP 峰值内存和实体清晰度验收；本轮模拟器与 CI 证据不替代真实硬件。
+2. 继续处理[问题清单](../AUTONOMOUS_ISSUES.md)中的相机异步错误、外部提供方阻塞、`SharedPreferences.apply()` 落盘耐久性、预览 OOM、EXIF 元数据与方向、安装器文件租约、URI 授权回收及依赖锁定。
+3. 评估 `allowBackup=true` 的备份策略和用户隐私预期；在没有明确数据迁移方案前不改变已发布行为。

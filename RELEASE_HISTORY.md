@@ -10,13 +10,22 @@
 | **v2.1.2 / code 6** | **正式发布成功（2026-11-21）** | 见下方“v2.1.2 发布证据”。 |
 | **v2.1.3 / code 7** | **正式发布成功（2026-11-21）** | [稳定版下载](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.3) · [发布流水线](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44799665199) |
 | **v2.1.4 / code 8** | **正式发布成功（2026-11-21）** | [稳定版下载](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.4) · [发布流水线](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44830235233) |
-| **2.1.6 / code 10** | **本地候选，未发布** | 独立工作树中的早期验证；最终边界回归、CI、签名资产和保留数据覆盖升级待完成。 |
+| **v2.1.6 / code 10** | **正式发布成功（2026-11-21）** | [稳定版下载](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.6) · [发布流水线](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44852568794) |
 
-## 2.1.6 / code 10 候选（本地，未发布）
+## v2.1.6 发布证据
 
-- **最后核验的公开稳定版仍为 v2.1.4 / code 8。** 2.1.6 候选纳入未发布的 2.1.5 / code 9 修复；本轮以当时的 `origin/main` `2cda675` 为起点，改动仅在独立 `lumora-evolution-216` 工作树，未提交、推送、创建标签或 Release。
-- [候选交付文档](docs/EVOLUTION-2.1.6.md) 与 [验收记录](docs/TEST_REPORT.md) 区分早期本地测试与准确最终快照待重跑的验证。未签名 Release APK 是不可分发的中间产物，不是签名或公开资产证据。
-- 最终 CI、签名/公开资产复核及从公开 v2.1.4 保留数据的签名覆盖升级均待完成。尚无该候选的 CI run、正式下载、签名或公开摘要链接。
+- 发布目标提交为 `0bfcead473a850f7319fbf98193ed8e8cae96fd3`，先进入并推送远程 `main`，再创建新注解标签 `v2.1.6`；标签对象为 `dcf226d2512d5514490a847886ac8749e0ee6a40`，没有移动或复用历史标签。
+- [发布流水线 44852568794](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44852568794) 的源码检查、构建/Lint、API 29/35 仪器、Android verification、受保护签名、签名包安装启动和公开资产发布全部 success。Release 为 `draft=false`、`prerelease=false`，发布时间为 `2026-11-21T02:00:37Z`。
+- 三项公开资产均可下载并独立校验：`LUMORA-Camera-2.1.6-Android-universal.apk` 为 50,230,458 字节，GitHub digest `sha256:e972446e77e35fdfc7c5da60d626fc4ee5c38797efb2f320dd70b011e706fdb6`；`android-update.json` 为 440 字节，digest `sha256:4256b15c238b14235face9f148733f4eec1e44ed83b04caeaaf8fa364e85a26e`；`SHA256SUMS.txt` 为 194 字节，digest `sha256:27dfeb3ffefe49d64429c4b2a4ef378d29ff54fcfd11c6eac763d839f0c629dc`。`sha256sum -c` 和 `scripts/release/android.py public --tag v2.1.6` 均通过。
+- 公开 APK 的 `apksigner verify --verbose --print-certs` 显示 v3=true、v2=false，单一 RSA 3072 位签名证书 `CN=LUMORA Camera Release`，SHA-256 指纹为 `c5bec00b0721f580823a9bc9acda5285fa1c5e108ed3798d0ee3bc626c157985`。`aapt2 dump badging` 确认为 `com.lumora.camera`、versionName 2.1.6、versionCode 10、minSdk 29、targetSdk 35、compileSdk 36，未标记 `application-debuggable`；`zipalign -c -P 16 4` 通过。
+- 公开 APK 静态暴露面复测为 98/100、等级 B，仅保留 `allowBackup=true` 的低风险提示；该相对评分不等于绝对安全等级，未将 MIT 开源 DEX 可读性写成秘密泄漏。
+- 独立 AVD `lumora_release216_upgrade`（API 35，`emulator-5558`）先安装公开 v2.1.4，拍摄两张作品并收藏一张、关闭音量键快门，再以 `adb install -r` 覆盖安装公开 v2.1.6 并冷启动。升级后作品库仍为“全部 2、收藏 1”，第一张作品显示收藏状态，原图与成片切换均实际打开；设置页显示音量键快门关闭、构图网格关闭。四个 JPEG（两张原图、两张成片）的文件名、大小和 SHA-256 升级前后逐字节一致，未卸载、未 `pm clear`。
+
+## 2.1.6 发布前候选记录（已归档）
+
+- 2.1.6 纳入未发布的 2.1.5 / code 9 修复；本轮以当时的 `origin/main` `2cda675` 为起点，在独立 `lumora-evolution-216` 工作树实现，原脏工作区未触碰。
+- 候选本地构建、双 Lint、JVM、双 API 及平板回归，以及精确提交的远程 CI，均已在发布前完成；未签名 Release 仅作为中间验证产物，从未作为正式包分发。
+- 发布前文档中的“待签名/待升级”表述均由上方 v2.1.6 发布证据取代；历史 2.1.5 仍无单独标签或 Release。
 
 ## 2.1.5 / code 9 候选（源码已入 main，未发布）
 
