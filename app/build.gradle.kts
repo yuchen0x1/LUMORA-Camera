@@ -65,7 +65,7 @@ dependencies {
     implementation("androidx.camera:camera-camera2:1.6.2")
     implementation("androidx.camera:camera-lifecycle:1.6.2")
     implementation("androidx.camera:camera-view:1.6.2")
-    implementation("androidx.camera:camera-extensions:1.6.2")
+    implementation("androidx.camera:camera-extensions:1.7.0")
 
     implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("androidx.documentfile:documentfile:1.1.0")
