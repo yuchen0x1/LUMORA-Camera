@@ -2,13 +2,14 @@
 
 LUMORA 是一款面向 Android 10 及以上系统的本地摄影应用。可以从取景器拍摄 JPEG，在同一张原图上尝试胶片风格与编辑参数，并在作品库中比较不同版本。
 
-当前公开稳定版为 **v2.1.7（versionCode 11，Android 10 / API 29 起，targetSdk 35）**。相机权限仅用于取景和拍摄；不授权也能使用作品库和设置。请从 [GitHub Release v2.1.7](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.7) 下载正式签名 APK。`v2.1.0` 是未发布候选标签；历史 [v2.0.0 测试版](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.0.0) 使用调试证书，不能直接覆盖为不同签名的正式包。不要为升级卸载旧应用。版本变化见[更新记录](CHANGELOG.md)，发布源码和资产见[发布历史](RELEASE_HISTORY.md)。
+当前公开稳定版为 **v2.1.8（versionCode 12，Android 10 / API 29 起，targetSdk 35）**。相机权限仅用于取景和拍摄；不授权也能使用作品库和设置。请从 [GitHub Release v2.1.8](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.8) 下载正式签名 APK。`v2.1.0` 是未发布候选标签；历史 [v2.0.0 测试版](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.0.0) 使用调试证书，不能直接覆盖为不同签名的正式包。不要为升级卸载旧应用。版本变化见[更新记录](CHANGELOG.md)，发布源码和资产见[发布历史](RELEASE_HISTORY.md)。
 
-## 2.1.7 新功能与验证范围
+## 2.1.8 仓库清理与验证范围
 
-- 新增按镜头能力提供的 RAW / DNG 拍摄、主题与安全区改进、可保存的 PRO 状态、仅预览 OOM 降级，以及有界拍摄/渲染队列、持久拍摄日志和仅新增的索引恢复预览。
-- 源码 main push CI、标签 CI 和实际三语言 CodeQL 均已通过。公开资产已独立验签；双 API 默认矩阵、真实安装器取消、360dp/fontScale 200%、100 张耐久与平板结果见[验收报告](docs/TEST_REPORT.md)。独立 API 35 模拟器中，同证书 v2.1.6 → v2.1.7 覆盖安装保留了测试作品、收藏、音量键快门偏好及 4 个样本 JPEG；不涵盖主题迁移。
-- 人工固定宽度浮动窗口的 LIGHT 白图标仍是已知限制。实体 RAW/厂商 AF/扩展、12/48 MP 峰值内存、URI 授权回收、提供方阻塞、云备份迁移、UpdateDialog 接线及实体安装器/多窗口仍待独立验证；不主张跨版本提速或画质提升。下方历史截图不作 v2.1.7 验收证据。
+- 删除 13 张从未被文档引用的早期 `emulator-*` 测试截图和 5 份已完成的旧实施计划与设计过程稿，并补齐日志、临时文件、APK/AAB 等本地忽略规则；仍用于发布、验收和当前界面展示的 `v2-*` 正式截图及历史发布证据全部保留。
+- 不改变应用运行时代码、依赖、照片格式、签名证书或数据迁移逻辑。沿用既有正式签名，可用同证书正式包覆盖安装；应用内更新继续通过 GitHub 稳定版、`android-update.json` 和递增版本码向旧版用户提供提示。
+- 源码 main push CI、标签发布流水线和实际三语言 CodeQL 均已通过。标签流水线覆盖 API 29/35 默认矩阵、受保护签名、签名 APK 安装启动及公开资产校验；公开资产已独立验签并核对摘要。详见[验收报告](docs/TEST_REPORT.md)与[发布历史](RELEASE_HISTORY.md)。
+- 实体 RAW/厂商 AF/扩展、12/48 MP 峰值内存、URI 授权回收、提供方阻塞、云备份迁移、UpdateDialog 接线及实体安装器/多窗口仍待独立验证；不主张跨版本提速或画质提升。下方历史截图不作 v2.1.8 验收证据。
 
 ![API 35 模拟器上的取景界面](docs/screenshots/v2-camera.png)
 

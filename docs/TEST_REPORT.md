@@ -1,6 +1,29 @@
 # LUMORA Camera 验收报告
 
-## 2.1.7 / code 11：正式发布与验收（2026-11-21）
+## 2.1.8 / code 12：仓库清理与正式发布验收（2026-11-26）
+
+**公开稳定版为 v2.1.8 / code 12 / minSdk 29 / targetSdk 35**，发布源码 `53029a89f6a06c943ffff5a01b9c8c5d04dea3e5` 与注解标签 `v2.1.8` 绑定。发布 ID `459175762`，公开时间 `2026-11-26T09:11:12Z`；公开签名资产复核是独立结论。本版只清理仓库无引用过程文件并补齐忽略规则，不改变应用运行时代码、依赖、照片格式、签名证书或数据迁移逻辑。
+
+### 门禁与流水线
+
+- 源码 main push [Android CI 45785378016](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/45785378016)、[CodeQL 45785378221](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/45785378221) 与[依赖安全 45785378187](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/45785378187) 全部成功。
+- [标签发布 run 45787235294](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/45787235294) 的 11 个 job 全部成功：标签/源码校验、构建与 Lint、实际三语言 CodeQL、API 29/35 默认矩阵、Android verification、受保护签名、签名 APK 安装启动及公开资产校验。仪器输出为 API 29 默认集 **OK (150 tests)**、API 35 默认集 **OK (151 tests)**，另有一组 **OK (8 tests)**；各报告保留正常末行 `INSTRUMENTATION_CODE: -1`。
+- 发布脚本离线测试 **20/20**；本地独立英文工作树干净构建通过：JVM **53/53、0 失败/错误/跳过**，Debug 与 Release Lint 均 **0 error / 38 warning**，Debug、Release、androidTest APK 均构建成功。Release APK 身份为 `com.lumora.camera`、2.1.8 / code 12 / min 29 / target 35、非 debuggable，`zipalign -c -P 16 4` 通过。
+
+### 独立公开资产与签名核验
+
+- 独立下载恰好三项公开资产；APK 50,492,714 B、SHA-256 `bcd6516a8823400320da0c14a42428a3f9bde27473b225601630b366435683ed`，`android-update.json` 440 B、SHA-256 `8551229cfebdb5451d6c2d02b9dd4d4607690549d81c65560db8feb2c6662429`，`SHA256SUMS.txt` 194 B、SHA-256 `ff247a6ae20ca33e421c1ab77c0625a8c0ac7f791df37bb0f7a5c0cf0904e31e`；下载字节、SHA-256、GitHub API digest 与摘要文件条目全部一致。
+- 公开 APK 的 `apksigner verify --verbose --print-certs` 返回 0，v3=true，单一正式签名者证书 SHA-256 `c5bec00b0721f580823a9bc9acda5285fa1c5e108ed3798d0ee3bc626c157985`，与 v2.1.7 相同；`aapt` 确认 2.1.8 / code 12 / min 29 / target 35 且未标记 `application-debuggable`。
+- 更新元数据为 `versionName=2.1.8`、`versionCode=12`、`minSdk=29`，APK 大小、摘要与签名证书均和公开资产一致；`releases/latest` 已指向 v2.1.8，旧版客户端可识别递增版本码并提示升级。
+- 发布前后完整分页查询开放 Code Scanning 告警 0、开放 Dependabot 告警 0；这是时间点快照，不等于未来无漏洞保证。已关闭的 5 个 Dependabot 升级 PR 均 CI 失败且未合入主线，远端最终只保留 `main`。
+
+### 明确未覆盖的边界
+
+- 本版未执行实体设备保留数据覆盖升级，未复用 2.1.7 的覆盖升级结论；不覆盖云备份迁移、URI 授权回收、提供方阻塞、UpdateDialog 接线、实体安装器或多窗口。
+- 本版未重复 2.1.7 的有界静态暴露面扫描；无高/严重扫描项属于历史 2.1.7 签名包结论，不挪作本版结果。实体 RAW/厂商 AF/扩展、12/48 MP 峰值内存仍开放。
+- 本版不主张速度、画质、内存或数据兼容性改善；发布脚本同时修正变更记录提取规则，使更新模板的全部二级章节完整进入 Release Notes，并由新增离线回归测试覆盖。
+
+## 2.1.7 / code 11：正式发布与验收（历史，2026-11-21）
 
 **公开稳定版为 v2.1.7 / code 11 / minSdk 29 / targetSdk 35**，发布源码及轻量标签均绑定 `7778eb8a5b43fe7f940ae2ec446bed6e0cc50c98`。发布（ID `453675180`，`2026-11-21T12:27:00Z`）、公开签名资产复核和保留数据覆盖升级是独立结论。历史本地结果及失败不改写。原 E 盘工作树的 `git status -z` 与 binary diff 指纹在修正哈希序列化后均匹配；这不抹去下方设备安装 incident。
 
@@ -14,7 +37,7 @@
 
 ### 独立公开资产与签名核验
 
-恰好三项公开资产的下载大小、SHA-256、GitHub API 摘要及更新元数据/`SHA256SUMS.txt` 的对应条目一致；摘要、证书和发布身份见[正式发布历史](../RELEASE_HISTORY.md#v217-发布证据当前公开稳定版)。独立证据：`D:/BuildTemp/lumora217-public-verified-qq92g04r/evidence/verification.json`。APK 的 apksigner 退出 0、v3=true、单一签名者且证书与 v2.1.6 相同；aapt 身份/非 debuggable 和 16 KiB zipalign 检查通过。独立核验首次以严格证书正则解析时被 Windows CRLF 输出阻断；保存的 apksigner 输出实际为成功，按 `splitlines()` 逐行精确核对指纹后继续，未重新下载、签名或发布。签名包扫描为 98/B，`--fail-on high` 退出 0，只有 `allowBackup=true` 低风险和 3 项信息提示，无高危/严重项；下方 86/B 的 unsigned `APK-SIG` 是历史中间包记录，见[安全审查](../SECURITY_AUDIT.md)。
+恰好三项公开资产的下载大小、SHA-256、GitHub API 摘要及更新元数据/`SHA256SUMS.txt` 的对应条目一致；摘要、证书和发布身份见[正式发布历史](../RELEASE_HISTORY.md#v217-发布证据历史稳定版)。独立证据：`D:/BuildTemp/lumora217-public-verified-qq92g04r/evidence/verification.json`。APK 的 apksigner 退出 0、v3=true、单一签名者且证书与 v2.1.6 相同；aapt 身份/非 debuggable 和 16 KiB zipalign 检查通过。独立核验首次以严格证书正则解析时被 Windows CRLF 输出阻断；保存的 apksigner 输出实际为成功，按 `splitlines()` 逐行精确核对指纹后继续，未重新下载、签名或发布。签名包扫描为 98/B，`--fail-on high` 退出 0，只有 `allowBackup=true` 低风险和 3 项信息提示，无高危/严重项；下方 86/B 的 unsigned `APK-SIG` 是历史中间包记录，见[安全审查](../SECURITY_AUDIT.md)。
 
 ### 正式包保留数据覆盖升级
 

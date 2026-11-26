@@ -2,7 +2,23 @@
 
 以 GitHub Release 和签名资产的真实状态为准，不将标签存在、候选元数据、调试 APK 或未完成流水线称为正式发布。
 
-## v2.1.7 发布证据（当前公开稳定版）
+## v2.1.8 发布证据（当前公开稳定版）
+
+- **v2.1.8 / versionCode 12 / minSdk 29 / targetSdk 35** 已公开：[GitHub Release v2.1.8](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.8)，ID `459175762`，`draft=false`、`prerelease=false`，发布于 `2026-11-26T09:11:12Z`。源码先进入 `main`，新建的注解标签 `v2.1.8` 指向 `53029a89f6a06c943ffff5a01b9c8c5d04dea3e5`（标签对象 `a6a18acc83e5c9d6afe31f3b820b934aafab1aca`）；未移动、未复用标签。发布后文档不改变标签或发布源码。
+- [源码 main push CI 45785378016](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/45785378016)、[CodeQL 45785378221](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/45785378221) 与[依赖安全 45785378187](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/45785378187) 均成功；[标签发布 run 45787235294](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/45787235294) 的 11 个 job 全部成功，含实际三语言 CodeQL、API 29/35 默认矩阵、受保护签名、签名 APK 安装启动及草稿/公开资产校验。
+- 独立公开下载核对恰好三项资产；下载字节数与 SHA-256 均与 GitHub API、`android-update.json` 和 `SHA256SUMS.txt` 一致。
+
+| 公开资产 | 字节数 | SHA-256 |
+| --- | ---: | --- |
+| `LUMORA-Camera-2.1.8-Android-universal.apk` | 50,492,714 | `bcd6516a8823400320da0c14a42428a3f9bde27473b225601630b366435683ed` |
+| `android-update.json` | 440 | `8551229cfebdb5451d6c2d02b9dd4d4607690549d81c65560db8feb2c6662429` |
+| `SHA256SUMS.txt` | 194 | `ff247a6ae20ca33e421c1ab77c0625a8c0ac7f791df37bb0f7a5c0cf0904e31e` |
+
+- 公开 APK 的 `apksigner verify --verbose --print-certs` 退出 0，v3=true，单一签名证书 SHA-256 `c5bec00b0721f580823a9bc9acda5285fa1c5e108ed3798d0ee3bc626c157985`，与 v2.1.7 相同。`aapt` 确认 `com.lumora.camera`、2.1.8 / code 12 / min 29 / target 35、非 debuggable；`zipalign -c -P 16 4` 通过。更新元数据声明同一证书、版本码 12 与 50,492,714 字节 APK，旧版客户端可据此识别新版本并提示升级。
+- 本版仅清理仓库无引用过程文件并补齐忽略规则，不改变应用运行时代码、依赖、照片格式、签名证书或数据迁移逻辑；未声称速度、画质或内存改善，也未把 2.1.7 的实体覆盖升级结果套用到本版。
+- 实体 RAW/厂商 AF/扩展、12/48 MP 峰值内存、持久 URI 授权回收、提供方阻塞、实际云备份/迁移和实体安装器/多窗口，均不由本次发布证明。
+
+## v2.1.7 发布证据（历史稳定版）
 
 - **v2.1.7 / versionCode 11 / minSdk 29 / targetSdk 35** 已公开：[GitHub Release v2.1.7](https://github.com/yuchen0x1/LUMORA-Camera/releases/tag/v2.1.7)，ID `453675180`，`draft=false`、`prerelease=false`，发布于 `2026-11-21T12:27:00Z`。源码先进入 `main`，新建的轻量标签 `v2.1.7` 直接指向 `7778eb8a5b43fe7f940ae2ec446bed6e0cc50c98`；未移动、未复用标签。发布后文档不改变标签或发布源码。
 - [源码 main push CI 44900113421](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44900113421) 成功，与 [标签发布 run 44902474570](https://github.com/yuchen0x1/LUMORA-Camera/actions/runs/44902474570) 分开。标签 run 第 1 次尝试的 11 个 job 全部成功，含复用 Android CI、实际三语言 CodeQL、受保护签名、签名 APK 安装启动及草稿/公开资产校验。标签 CI 报告、CodeQL、告警和仪器范围详见[验收报告](docs/TEST_REPORT.md#标签发布流水线与独立报告复核)。
