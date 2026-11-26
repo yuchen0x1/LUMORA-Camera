@@ -212,7 +212,22 @@ class PreparedMetadataTest(unittest.TestCase):
             f"{hashlib.sha256(update).hexdigest()}  {android.UPDATE}",
         ], (output / android.SUMS).read_text(encoding="utf-8").splitlines())
 
+    def test_prepare_keeps_template_sections_until_the_next_version(self):
+        (self.root / "CHANGELOG.md").write_text(
+            f"## {NAME} - 2026-11-21\n\n"
+            "## 📢 版本概述\n\nOverview.\n\n"
+            "## ✨ 新增功能\n\nFeature.\n\n"
+            "## 2.1.4 - 2026-11-20\n\nOld notes.\n",
+            encoding="utf-8",
+        )
+        output = self.prepare()
+        notes = (output / "notes.md").read_text(encoding="utf-8")
+        self.assertIn("## 📢 版本概述", notes)
+        self.assertIn("## ✨ 新增功能", notes)
+        self.assertNotIn("Old notes.", notes)
+
     def test_version_accepts_client_component_and_integer_upper_bounds(self):
+
         name = "999999999.999999999.999999999"
         self.write_version(name, MAX_VERSION_CODE, MAX_SDK)
         self.assertEqual((name, MAX_VERSION_CODE, MAX_SDK), android.version(f"v{name}"))

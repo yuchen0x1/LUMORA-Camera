@@ -16,3 +16,15 @@ local.properties
 captures/
 .externalNativeBuild/
 .cxx/
+
+# Local build outputs, logs, and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+*.swp
+*.apk
+*.aab
+.DS_Store
+Thumbs.db

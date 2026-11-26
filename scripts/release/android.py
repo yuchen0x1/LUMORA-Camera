@@ -83,7 +83,10 @@ def prepare(args):
     require(f"sdkVersion:'{minimum}'" in badging and "application-debuggable" not in badging,
             "Incorrect API level or debuggable APK")
     release_notes = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    entry = re.search(rf"(?ms)^## {re.escape(name)} - [^\n]+\n(.+?)(?=^## |\Z)", release_notes)
+    entry = re.search(
+        rf"(?ms)^## {re.escape(name)} - [^\n]+\n(.+?)(?=^## \d+\.\d+\.\d+ - |\Z)",
+        release_notes,
+    )
     require(entry and entry[1].strip(), "Add the current changelog entry before releasing")
 
     args.output.mkdir(parents=True, exist_ok=True)
